@@ -37,7 +37,7 @@ const STRINGS = {
     cantReachTitle: "Can't reach the game",
     retry: 'Retry',
     loadingGame: 'Loading game…',
-    numPlayersLabel: 'Number of Players (3-8)',
+    numPlayersLabel: 'Number of Players (2-12)',
     gameDurationLabel: 'Game Duration (minutes)',
     nextSetNames: 'Next: Set Player Names',
     howToPlayTitle: 'How to Play:',
@@ -127,7 +127,7 @@ const STRINGS = {
     cantReachTitle: 'Не удаётся подключиться к игре',
     retry: 'Повторить',
     loadingGame: 'Загрузка игры…',
-    numPlayersLabel: 'Количество игроков (3–8)',
+    numPlayersLabel: 'Количество игроков (2–12)',
     gameDurationLabel: 'Длительность игры (минут)',
     nextSetNames: 'Далее: указать имена игроков',
     howToPlayTitle: 'Как играть:',
@@ -1183,10 +1183,10 @@ const BetYouCantGame = () => {
                   <button
                     type="button"
                     onClick={() => setLocalSetup(prev => {
-                      const n = Math.max(3, prev.numPlayers - 1);
+                      const n = Math.max(2, prev.numPlayers - 1);
                       return { ...prev, numPlayers: n, playerNames: Array.from({ length: n }, (_, i) => prev.playerNames[i] || '') };
                     })}
-                    disabled={localSetup.numPlayers <= 3}
+                    disabled={localSetup.numPlayers <= 2}
                     className="w-12 h-12 shrink-0 flex items-center justify-center text-2xl font-bold bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 active:bg-purple-300 disabled:opacity-40 disabled:hover:bg-purple-100"
                   >
                     −
@@ -1195,10 +1195,10 @@ const BetYouCantGame = () => {
                   <button
                     type="button"
                     onClick={() => setLocalSetup(prev => {
-                      const n = Math.min(8, prev.numPlayers + 1);
+                      const n = Math.min(12, prev.numPlayers + 1);
                       return { ...prev, numPlayers: n, playerNames: Array.from({ length: n }, (_, i) => prev.playerNames[i] || '') };
                     })}
-                    disabled={localSetup.numPlayers >= 8}
+                    disabled={localSetup.numPlayers >= 12}
                     className="w-12 h-12 shrink-0 flex items-center justify-center text-2xl font-bold bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 active:bg-purple-300 disabled:opacity-40 disabled:hover:bg-purple-100"
                   >
                     +
