@@ -1432,11 +1432,14 @@ const BetYouCantGame = () => {
 
             <button
               onClick={gs.phase === 'betting' ? startChallenge : revealBlindTask}
-              disabled={betsCount < betsNeeded}
+              disabled={betsCount < betsNeeded || !iAmCurrent}
               className="w-full py-3 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700 disabled:bg-gray-400"
             >
               {gs.phase === 'betting' ? 'All Bets Placed - Start Challenge!' : 'All Bets Placed - Reveal Challenge!'}
             </button>
+            {betsCount >= betsNeeded && !iAmCurrent && (
+              <p className="text-xs text-gray-500 text-center mt-2">Waiting for {currentPlayer.name} to continue…</p>
+            )}
           </div>
         )}
 
@@ -1466,10 +1469,14 @@ const BetYouCantGame = () => {
 
             <button
               onClick={startChallenge}
-              className="w-full py-4 bg-purple-600 text-white font-bold text-lg rounded-lg hover:bg-purple-700"
+              disabled={!iAmCurrent}
+              className="w-full py-4 bg-purple-600 text-white font-bold text-lg rounded-lg hover:bg-purple-700 disabled:bg-gray-400"
             >
               Start Challenge! 🎯
             </button>
+            {!iAmCurrent && (
+              <p className="text-xs text-gray-500 text-center mt-2">Waiting for {currentPlayer.name} to continue…</p>
+            )}
           </div>
         )}
 
@@ -1525,10 +1532,14 @@ const BetYouCantGame = () => {
                 })}
                 <button
                   onClick={nextTurn}
-                  className="w-full mt-4 py-3 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700"
+                  disabled={!iAmCurrent}
+                  className="w-full mt-4 py-3 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700 disabled:bg-gray-400"
                 >
                   Continue ▶
                 </button>
+                {!iAmCurrent && (
+                  <p className="text-xs text-gray-500 text-center mt-2">Waiting for {currentPlayer.name} to continue…</p>
+                )}
               </div>
             )}
           </div>

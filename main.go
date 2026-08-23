@@ -134,6 +134,18 @@ func respondState(w http.ResponseWriter, r *http.Request, state GameState) {
 	writeJSON(w, sanitizeState(state, viewerFromRequest(r)))
 }
 
+// requireCurrentPlayer rejects the request unless it was made by the game's
+// current player (identified by the ?playerId= query param). Writes a 403
+// and returns false if not; callers should stop handling on false.
+func requireCurrentPlayer(w http.ResponseWriter, r *http.Request, state GameState) bool {
+	viewerID := viewerFromRequest(r)
+	if viewerID == nil || *viewerID != state.CurrentPlayerIdx {
+		writeErr(w, 403, "only the current player can do this")
+		return false
+	}
+	return true
+}
+
 func pickUnused(total int, used []int) (int, []int) {
 	usedSet := map[int]bool{}
 	for _, u := range used {
@@ -359,6 +371,9 @@ func handleReveal(w http.ResponseWriter, r *http.Request, id string) {
 	}
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	if !requireCurrentPlayer(w, r, g.state) {
+		return
+	}
 	if g.state.BlindBetTaskType == nil {
 		writeErr(w, 400, "no blind bet type chosen")
 		return
@@ -393,6 +408,9 @@ func handleStartChallenge(w http.ResponseWriter, r *http.Request, id string) {
 	}
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	if !requireCurrentPlayer(w, r, g.state) {
+		return
+	}
 	ends := nowMs() + int64(req.TaskTimeSeconds)*1000
 	g.state.PerformEndsAt = &ends
 	g.state.Phase = "performing"
@@ -487,6 +505,9 @@ func handleNextTurn(w http.ResponseWriter, r *http.Request, id string) {
 	}
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	if !requireCurrentPlayer(w, r, g.state) {
+		return
+	}
 
 	g.state.CurrentPlayerIdx = (g.state.CurrentPlayerIdx + 1) % len(g.state.Players)
 	g.state.DiceValue = nil
