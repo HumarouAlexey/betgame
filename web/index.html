@@ -347,9 +347,12 @@ const BetYouCantGame = () => {
   const params = new URLSearchParams(window.location.search);
   const urlGameId = params.get('g');
   const urlPlayerId = params.get('p');
+  const urlAdminToken = params.get('a');
 
   const [gameId, setGameId] = useState(urlGameId || null);
   const [myPlayerId, setMyPlayerId] = useState(urlPlayerId !== null ? Number(urlPlayerId) : null);
+  const [adminToken, setAdminToken] = useState(urlAdminToken || null);
+  const isAdmin = !!adminToken;
   const [gs, setGs] = useState(null);
   const [loading, setLoading] = useState(!!urlGameId);
   const [apiError, setApiError] = useState(null);
@@ -364,6 +367,10 @@ const BetYouCantGame = () => {
   const [copiedId, setCopiedId] = useState(null);
 
   const apiBase = () => `${window.location.origin}/api/games`;
+
+  // Appends our own player id so the server knows which bet (if any) it's
+  // safe to reveal to us — other players' bets are always withheld.
+  const viewerQuery = () => (myPlayerId !== null ? `?playerId=${myPlayerId}` : '');
 
   const claimPlayer = (id) => {
     setMyPlayerId(id);
@@ -408,7 +415,7 @@ const BetYouCantGame = () => {
     let cancelled = false;
     const refresh = async () => {
       try {
-        const res = await fetch(`${apiBase()}/${gameId}`);
+        const res = await fetch(`${apiBase()}/${gameId}${viewerQuery()}`);
         if (!res.ok) throw new Error('not found');
         const data = await res.json();
         if (!cancelled) {
@@ -424,7 +431,7 @@ const BetYouCantGame = () => {
     refresh();
     const interval = setInterval(refresh, 1500);
     return () => { cancelled = true; clearInterval(interval); };
-  }, [gameId]);
+  }, [gameId, myPlayerId]);
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
@@ -443,7 +450,7 @@ const BetYouCantGame = () => {
 
   const post = async (path, body) => {
     try {
-      const res = await fetch(`${apiBase()}/${gameId}${path}`, {
+      const res = await fetch(`${apiBase()}/${gameId}${path}${viewerQuery()}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body || {})
@@ -479,15 +486,17 @@ const BetYouCantGame = () => {
       }
       setGameId(data.gameId);
       setGs(data.state);
+      setAdminToken(data.adminToken);
       const url = new URL(window.location.href);
       url.searchParams.set('g', data.gameId);
+      url.searchParams.set('a', data.adminToken);
       window.history.replaceState(null, '', url.toString());
     } catch (e) {
       setApiError("Can't reach the game server. Is it running?");
     }
   };
 
-  const startTheGame = () => post('/start');
+  const startTheGame = () => post('/start', { adminToken });
   const rollDice = () => post('/roll');
   const selectBlindBetType = (type) => post('/blindType', { type });
   const revealBlindTask = () => post('/reveal');
@@ -1152,7 +1161,7 @@ const BetYouCantGame = () => {
         <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-2xl p-6 sm:p-8">
           <h1 className="text-3xl font-bold text-center mb-2 text-purple-600">Bet You Can't!</h1>
           <p className="text-center text-gray-600 mb-6">
-            Each player scans their own QR code (or taps their name below) on their own phone. Anyone can start the game once everyone's in.
+            Each player scans their own QR code (or taps their name below) on their own phone. Only the host can start the game once everyone's in.
           </p>
 
           {isMe ? (
@@ -1183,12 +1192,18 @@ const BetYouCantGame = () => {
             ))}
           </div>
 
-          <button
-            onClick={startTheGame}
-            className="w-full bg-purple-600 text-white py-3 rounded-lg font-bold text-lg hover:bg-purple-700 transition"
-          >
-            Start Game ▶
-          </button>
+          {isAdmin ? (
+            <button
+              onClick={startTheGame}
+              className="w-full bg-purple-600 text-white py-3 rounded-lg font-bold text-lg hover:bg-purple-700 transition"
+            >
+              Start Game ▶
+            </button>
+          ) : (
+            <div className="w-full bg-gray-100 text-gray-600 py-3 rounded-lg font-semibold text-center">
+              Waiting for the host to start the game…
+            </div>
+          )}
           {apiError && <p className="text-red-600 text-sm text-center mt-3">{apiError}</p>}
           <p className="text-xs text-gray-400 text-center mt-4">
             Players need to be on the same WiFi network as this server (or reach its address over the internet).
@@ -1242,7 +1257,8 @@ const BetYouCantGame = () => {
     : (currentTask ? currentTask.time : null);
   const iAmCurrent = myPlayerId === gs.currentPlayerIndex;
   const otherPlayers = gs.players.filter((_, i) => i !== gs.currentPlayerIndex);
-  const betsCount = Object.keys(gs.bets || {}).length;
+  const betsCount = gs.betsCount || 0;
+  const betPlacedBy = gs.betPlacedBy || [];
   const betsNeeded = gs.players.length - 1;
   const myBet = myPlayerId !== null ? (gs.bets || {})[myPlayerId] : undefined;
 
@@ -1382,11 +1398,12 @@ const BetYouCantGame = () => {
 
             <div className="bg-gray-50 p-4 rounded-lg mb-6">
               <h3 className="font-bold text-lg mb-2">Bets Placed ({betsCount}/{betsNeeded}):</h3>
+              <p className="text-xs text-gray-400 mb-2">Bets stay secret until the challenge is judged.</p>
               {otherPlayers.map(player => {
-                const bet = (gs.bets || {})[player.id];
+                const hasBet = betPlacedBy.includes(player.id);
                 return (
                   <p key={player.id} className="text-gray-700 text-sm">
-                    {player.name}: {bet ? `€${bet.amount} on ${bet.willSucceed ? '✓ SUCCESS' : '✗ FAIL'}` : 'thinking…'}
+                    {player.name}: {hasBet ? '✓ bet placed' : 'thinking…'}
                   </p>
                 );
               })}
@@ -1415,11 +1432,12 @@ const BetYouCantGame = () => {
 
             <div className="bg-blue-50 p-4 rounded-lg mb-6">
               <h3 className="font-bold text-lg mb-2">Bets Placed:</h3>
+              <p className="text-xs text-gray-400 mb-2">Bets stay secret until the challenge is judged.</p>
               {otherPlayers.map(player => {
-                const bet = (gs.bets || {})[player.id];
+                const hasBet = betPlacedBy.includes(player.id);
                 return (
                   <p key={player.id} className="text-gray-700">
-                    {player.name}: {bet ? `€${bet.amount} on ${bet.willSucceed ? '✓ SUCCESS' : '✗ FAIL'}` : '—'}
+                    {player.name}: {hasBet ? '✓ bet placed' : '—'}
                   </p>
                 );
               })}

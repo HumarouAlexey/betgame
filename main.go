@@ -11,6 +11,7 @@ import (
 	mrand "math/rand"
 	"net"
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -53,11 +54,14 @@ type GameState struct {
 	GameTimeMinutes   int           `json:"gameTimeMinutes"`
 	GameEndsAt        *int64        `json:"gameEndsAt"`
 	PerformEndsAt     *int64        `json:"performEndsAt"`
+	BetsCount         int           `json:"betsCount"`
+	BetPlacedBy       []int         `json:"betPlacedBy"`
 }
 
 type Game struct {
-	mu    sync.Mutex
-	state GameState
+	mu         sync.Mutex
+	state      GameState
+	adminToken string
 }
 
 var (
@@ -75,6 +79,59 @@ func randomGameID() string {
 		b[i] = alphabet[n.Int64()]
 	}
 	return string(b)
+}
+
+func randomToken(length int) string {
+	const alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	b := make([]byte, length)
+	for i := range b {
+		n, _ := rand.Int(rand.Reader, big.NewInt(int64(len(alphabet))))
+		b[i] = alphabet[n.Int64()]
+	}
+	return string(b)
+}
+
+// viewerFromRequest extracts the requesting client's own player id (if any)
+// from the ?playerId= query parameter, used to decide which bets they may see.
+func viewerFromRequest(r *http.Request) *int {
+	raw := r.URL.Query().Get("playerId")
+	if raw == "" {
+		return nil
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil {
+		return nil
+	}
+	return &n
+}
+
+// sanitizeState returns a copy of state safe to send to a given viewer: bets
+// belonging to other players are hidden until results are revealed. Only the
+// list of who has placed a bet (not the amount/choice) is ever shared early.
+func sanitizeState(state GameState, viewerID *int) GameState {
+	out := state
+	out.BetsCount = len(state.Bets)
+	placedBy := make([]int, 0, len(state.Bets))
+	for pid := range state.Bets {
+		placedBy = append(placedBy, pid)
+	}
+	out.BetPlacedBy = placedBy
+
+	if state.ShowResults {
+		return out
+	}
+	filtered := map[int]Bet{}
+	if viewerID != nil {
+		if b, ok := state.Bets[*viewerID]; ok {
+			filtered[*viewerID] = b
+		}
+	}
+	out.Bets = filtered
+	return out
+}
+
+func respondState(w http.ResponseWriter, r *http.Request, state GameState) {
+	writeJSON(w, sanitizeState(state, viewerFromRequest(r)))
 }
 
 func pickUnused(total int, used []int) (int, []int) {
@@ -158,6 +215,8 @@ func handleCreateGame(w http.ResponseWriter, r *http.Request) {
 		GameTimeMinutes:  req.GameTimeMinutes,
 	}
 
+	adminToken := randomToken(24)
+
 	gamesMu.Lock()
 	var id string
 	for {
@@ -166,10 +225,14 @@ func handleCreateGame(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
-	games[id] = &Game{state: state}
+	games[id] = &Game{state: state, adminToken: adminToken}
 	gamesMu.Unlock()
 
-	writeJSON(w, map[string]interface{}{"gameId": id, "state": state})
+	writeJSON(w, map[string]interface{}{
+		"gameId":     id,
+		"adminToken": adminToken,
+		"state":      sanitizeState(state, nil),
+	})
 }
 
 func handleGetGame(w http.ResponseWriter, r *http.Request, id string) {
@@ -180,7 +243,11 @@ func handleGetGame(w http.ResponseWriter, r *http.Request, id string) {
 	}
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	writeJSON(w, g.state)
+	respondState(w, r, g.state)
+}
+
+type startReq struct {
+	AdminToken string `json:"adminToken"`
 }
 
 func handleStart(w http.ResponseWriter, r *http.Request, id string) {
@@ -189,14 +256,20 @@ func handleStart(w http.ResponseWriter, r *http.Request, id string) {
 		writeErr(w, 404, "game not found")
 		return
 	}
+	var req startReq
+	json.NewDecoder(r.Body).Decode(&req)
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	if req.AdminToken == "" || req.AdminToken != g.adminToken {
+		writeErr(w, 403, "only the host can start the game")
+		return
+	}
 	if g.state.Phase == "lobby" {
 		g.state.Phase = "playing"
 		ends := nowMs() + int64(g.state.GameTimeMinutes)*60000
 		g.state.GameEndsAt = &ends
 	}
-	writeJSON(w, g.state)
+	respondState(w, r, g.state)
 }
 
 func handleRoll(w http.ResponseWriter, r *http.Request, id string) {
@@ -209,7 +282,7 @@ func handleRoll(w http.ResponseWriter, r *http.Request, id string) {
 	defer g.mu.Unlock()
 
 	if g.state.DiceValue != nil {
-		writeJSON(w, g.state)
+		respondState(w, r, g.state)
 		return
 	}
 
@@ -251,7 +324,7 @@ func handleRoll(w http.ResponseWriter, r *http.Request, id string) {
 		g.state.DiceValue = &roll
 	}
 
-	writeJSON(w, g.state)
+	respondState(w, r, g.state)
 }
 
 type blindTypeReq struct {
@@ -275,7 +348,7 @@ func handleBlindType(w http.ResponseWriter, r *http.Request, id string) {
 	g.state.BlindBetTaskType = &req.Type
 	g.state.Phase = "blindBetting"
 	g.state.Bets = map[int]Bet{}
-	writeJSON(w, g.state)
+	respondState(w, r, g.state)
 }
 
 func handleReveal(w http.ResponseWriter, r *http.Request, id string) {
@@ -300,7 +373,7 @@ func handleReveal(w http.ResponseWriter, r *http.Request, id string) {
 	g.state.CurrentTaskType = &t
 	g.state.CurrentTaskIndex = &idx
 	g.state.Phase = "revealBlindTask"
-	writeJSON(w, g.state)
+	respondState(w, r, g.state)
 }
 
 type startChallengeReq struct {
@@ -323,7 +396,7 @@ func handleStartChallenge(w http.ResponseWriter, r *http.Request, id string) {
 	ends := nowMs() + int64(req.TaskTimeSeconds)*1000
 	g.state.PerformEndsAt = &ends
 	g.state.Phase = "performing"
-	writeJSON(w, g.state)
+	respondState(w, r, g.state)
 }
 
 type betReq struct {
@@ -364,7 +437,7 @@ func handleBet(w http.ResponseWriter, r *http.Request, id string) {
 		return
 	}
 	g.state.Bets[req.PlayerID] = Bet{WillSucceed: req.WillSucceed, Amount: req.Amount}
-	writeJSON(w, g.state)
+	respondState(w, r, g.state)
 }
 
 type resultReq struct {
@@ -383,7 +456,7 @@ func handleResult(w http.ResponseWriter, r *http.Request, id string) {
 	defer g.mu.Unlock()
 
 	if g.state.TaskSuccess != nil {
-		writeJSON(w, g.state)
+		respondState(w, r, g.state)
 		return
 	}
 	total := 0
@@ -403,7 +476,7 @@ func handleResult(w http.ResponseWriter, r *http.Request, id string) {
 	success := req.Success
 	g.state.TaskSuccess = &success
 	g.state.ShowResults = true
-	writeJSON(w, g.state)
+	respondState(w, r, g.state)
 }
 
 func handleNextTurn(w http.ResponseWriter, r *http.Request, id string) {
@@ -425,7 +498,7 @@ func handleNextTurn(w http.ResponseWriter, r *http.Request, id string) {
 	g.state.Phase = "playing"
 	g.state.BlindBetTaskType = nil
 	g.state.PerformEndsAt = nil
-	writeJSON(w, g.state)
+	respondState(w, r, g.state)
 }
 
 func handleEnd(w http.ResponseWriter, r *http.Request, id string) {
@@ -437,7 +510,7 @@ func handleEnd(w http.ResponseWriter, r *http.Request, id string) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	g.state.Phase = "gameOver"
-	writeJSON(w, g.state)
+	respondState(w, r, g.state)
 }
 
 // routes a request like /api/games/{id}/{action}
