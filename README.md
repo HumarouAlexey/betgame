@@ -43,11 +43,15 @@ address instead. The code doesn't change — only where you run the binary.
 - `skillTaskCount` / `mentalTaskCount` constants in main.go must match the
   length of the `skillTasks` / `mentalTasks` arrays in web/index.html. If
   you add or remove challenges there, update the two constants here too.
-- Any player's phone can roll dice, judge success/fail, and advance turns.
-  Starting the game is the one exception: whoever's phone created the game
-  is the host, and only that phone (identified by a secret token kept in
-  its URL) can start it. Don't share the host's own link — the QR codes
-  and links generated for players don't carry that token.
+- Only the current player's phone can roll the dice, start/reveal a
+  challenge, end the game early, and advance to the next turn — the
+  buttons are disabled on everyone else's phone (and the server rejects
+  the request even if called directly). Judging success/fail is the one
+  action any player can do, so the group can agree on it together.
+- Starting the game itself is a separate role: whoever's phone created
+  the game is the host, and only that phone (identified by a secret
+  token kept in its URL) can start it. Don't share the host's own link
+  — the QR codes and links generated for players don't carry that token.
 - Bets are private: each phone only ever sees the bet it placed itself.
   Other players show up as "thinking…" / "✓ bet placed" until the
   challenge is judged, at which point everyone's bet and payout are

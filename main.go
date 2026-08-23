@@ -292,6 +292,9 @@ func handleRoll(w http.ResponseWriter, r *http.Request, id string) {
 	}
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	if !requireCurrentPlayer(w, r, g.state) {
+		return
+	}
 
 	if g.state.DiceValue != nil {
 		respondState(w, r, g.state)
@@ -530,6 +533,9 @@ func handleEnd(w http.ResponseWriter, r *http.Request, id string) {
 	}
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	if !requireCurrentPlayer(w, r, g.state) {
+		return
+	}
 	g.state.Phase = "gameOver"
 	respondState(w, r, g.state)
 }

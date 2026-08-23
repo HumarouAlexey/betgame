@@ -1296,7 +1296,9 @@ const BetYouCantGame = () => {
               </div>
               <button
                 onClick={endGame}
-                className="px-3 py-1.5 bg-red-500 text-white text-sm rounded-lg hover:bg-red-600"
+                disabled={!iAmCurrent}
+                title={iAmCurrent ? undefined : `Only ${currentPlayer.name} (current player) can end the game`}
+                className="px-3 py-1.5 bg-red-500 text-white text-sm rounded-lg hover:bg-red-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
               >
                 End Game
               </button>
@@ -1336,13 +1338,13 @@ const BetYouCantGame = () => {
 
             <button
               onClick={rollDice}
-              disabled={gs.diceValue !== null}
+              disabled={gs.diceValue !== null || !iAmCurrent}
               className="px-8 py-4 bg-purple-600 text-white text-xl font-bold rounded-lg hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition"
             >
               Roll Dice
             </button>
             {!iAmCurrent && (
-              <p className="text-sm text-gray-500 mt-4">Waiting on {currentPlayer.name} — anyone can roll for them if needed.</p>
+              <p className="text-sm text-gray-500 mt-4">Waiting on {currentPlayer.name} to roll…</p>
             )}
           </div>
         )}
