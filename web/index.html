@@ -1,0 +1,1506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bet You Can't!</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { margin: 0; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-presets="react">
+const { useState, useEffect } = React;
+
+const BetForm = ({ player, onBet, error }) => {
+  const [amount, setAmount] = useState('');
+  if (!player) return null;
+  const maxBet = Math.floor(player.money / 2);
+  return (
+    <div className="bg-gray-50 p-4 rounded-lg mb-6">
+      <p className="font-semibold mb-3">{player.name}, place your bet (€{player.money} available):</p>
+      <div className="flex gap-2">
+        <input
+          type="number"
+          placeholder="Amount"
+          min="1"
+          max={maxBet}
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          className="flex-1 px-3 py-2 border rounded"
+        />
+        <button
+          onClick={() => onBet(true, parseInt(amount) || 0)}
+          className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 font-semibold"
+        >
+          YES
+        </button>
+        <button
+          onClick={() => onBet(false, parseInt(amount) || 0)}
+          className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 font-semibold"
+        >
+          NO
+        </button>
+      </div>
+      <p className="text-xs text-gray-500 mt-1">Max bet: €{maxBet}</p>
+      {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
+    </div>
+  );
+};
+
+const BetYouCantGame = () => {
+  const skillTasks = [
+    { 
+      text: "Can the player fold an A4 sheet 4 times using only one hand?", 
+      time: 15,
+      diagram: "fold"
+    },
+    { 
+      text: "Can the player perform a sit-up while keeping their legs straight and not losing balance? 2 successful tries out of 3", 
+      time: 30,
+      diagram: "situp"
+    },
+    {
+      text: "Can the player catch a thrown pen with half a liter bottle? Try to catch the pen in the bottle. Do this 2 times.",
+      time: 30,
+      diagram: "bottle"
+    },
+    {
+      text: "Can the player flip a plastic bottle so it lands upright? Try 3 times - you must succeed 2 out of 3 times.",
+      time: 30,
+      diagram: "bottleflip"
+    },
+    {
+      text: "Can the player do 15 seconds of jumping rope without tripping? Knees must be raised high, you can also lift your legs up.",
+      time: 15,
+      diagram: "jumprope"
+    },
+    {
+      text: "Can the player catch a lying eraser (lying flat) by throwing it up, then by hitting the floor grab it? 3 tries - you must find the eraser in your hand 2 times.",
+      time: 30,
+      diagram: "eraser"
+    },
+    {
+      text: "Can the player throw a ball from the floor to the ceiling, so it bounces off the floor and hits the ceiling? 3 tries to succeed at least once.",
+      time: 30,
+      diagram: "throwceiling"
+    },
+    {
+      text: "Can the player balance 5 dice on each other, so the bottom one is lying on the floor from below? 3 tries - you must succeed 2 times.",
+      time: 30,
+      diagram: "dicestack"
+    },
+    {
+      text: "Can the player do 5 push-ups correctly? At the moment, you need to stop without touching the floor while stopping. Each stop must last at least 2 seconds.",
+      time: 30,
+      diagram: "pushup"
+    },
+    {
+      text: "Can the player throw a glass of water on the floor from a height of about 3 meters? The glass must not break during landing.",
+      time: 30,
+      diagram: "glassthrow"
+    },
+    {
+      text: "Can the player stand and do a table stand without hands? (3 tries)",
+      time: 30
+    },
+    {
+      text: "Can the player do 15 seconds down and jump so that their feet hit the TV program in which one channel is being played?",
+      time: 15
+    },
+    {
+      text: "Can the player play one answer to one question, so that everyone hears exactly what the player knows or wants to tell us about playing for something? (15 seconds)",
+      time: 15
+    },
+    {
+      text: "Can the player stick a cube on a dice cup so that dice bounce and teeth hit the cube? At the beginning 3 tries, but you can jump to 1 meter.",
+      time: 30
+    },
+    {
+      text: "Can the player stand on one hand in a standing position and then throw using a chair without falling? (you must repeat 3 times)",
+      time: 30
+    },
+    {
+      text: "Can the player throw a dice from 1 meter away so it lands feet on the table? (3 tries, the cube must fall standing on the table)",
+      time: 30
+    },
+    {
+      text: "Can the player write an SMS for 30 seconds?",
+      time: 30
+    },
+    {
+      text: "Can the player drop their feet on a chair so it goes from 0 to 2 meters away without falling? (3 tries)",
+      time: 30
+    },
+    {
+      text: "Can the player do 30 seconds with a 6-figure number word dictionary? JUNIOR: Count 4 digit numbers like 724, 625 - sitting, 7 digit numbers mixed up with syllables. (You must succeed with 4 correct statements in 30 seconds - you can answer your own questions 4 times (i.e. you're allowed to guess 4 numbers and tell them properly)",
+      time: 30
+    },
+    {
+      text: "Can the player fill a 0.5 liter (half liter) bottle from collection 1 meter away by holding it properly? (you should fill the bottle standing on the table - keep trying up to 5 times)",
+      time: 30
+    },
+    {
+      text: "Can the player jump 5 times over left to right by placing their hands on the floor and lifting the legs left while stopping? Every moment after stopping must be stopped on the other side.",
+      time: 30
+    },
+    {
+      text: "Can the player throw a pen from the floor so it sticks into the ceiling while sticking back? (3 tries - must find the pen in their hand 2 times. 2 attempts out of 4)",
+      time: 30
+    },
+    {
+      text: "Can the player lie down and bounce their knees 3 times straight? (3 tries - 1 attempt in a row)",
+      time: 30
+    },
+    {
+      text: "Can the player write 10 times 'Cha Cha Cha' in a phone? (you can write in English 'Cha Cha Cha...')",
+      time: 15
+    },
+    { text: "Balance a marker on your forehead for 5 seconds", time: 30 },
+    { text: "Bounce a ball and catch it 5 times in a row with one hand", time: 30 },
+    { text: "Stack 5 items on top of a motorcycle helmet", time: 60 },
+    { text: "Stand on one leg for 30 seconds", time: 30 },
+    { text: "Do 10 jumping jacks while maintaining eye contact", time: 30 },
+    { text: "Spin around 10 times and walk in a straight line", time: 30 },
+    { text: "Hold a plank position for 20 seconds", time: 30 },
+    { text: "Toss and catch a ball behind your back", time: 30 },
+    { text: "Balance a book on your head and walk 5 meters", time: 30 },
+    { text: "Do the Macarena dance perfectly", time: 60 },
+    { 
+      text: "Draw a checkmark (✓) shape on the floor. Throw a ball so it bounces on the floor, hits the wall, and comes back to your hand", 
+      time: 30,
+      diagram: "bounce"
+    },
+    { text: "Can the player do 10 squats while holding a broom horizontally above their head? Must maintain balance throughout.", time: 30 },
+    { text: "Can the player juggle 2 balls with one hand for 10 seconds without dropping?", time: 30 },
+    { text: "Can the player walk backwards in a straight line for 10 meters with eyes closed? Another player guides verbally only.", time: 45 },
+    { text: "Can the player spin a pen on their finger for 5 seconds like a basketball?", time: 30 },
+    { text: "Can the player do 5 burpees in 30 seconds?", time: 30 },
+    { text: "Can the player bounce a ping pong ball on a paddle 20 times without dropping it?", time: 30 },
+    { text: "Can the player build a house of cards with at least 3 levels? (3 tries)", time: 60 },
+    { text: "Can the player hold a wall sit position for 30 seconds?", time: 30 },
+    { text: "Can the player throw and catch 3 objects in succession without dropping any?", time: 30 },
+    { text: "Can the player do the worm dance move across 2 meters?", time: 30 },
+    { text: "Can the player balance on one foot while touching their nose with opposite hand for 15 seconds? Switch feet halfway.", time: 30 },
+    { text: "Can the player moonwalk backwards for 3 meters?", time: 30 },
+    { text: "Can the player spin around 5 times, then immediately stack 3 coins on top of each other? (2 tries)", time: 30 },
+    { text: "Can the player do 10 toe touches without bending their knees?", time: 30 },
+    { text: "Can the player balance a spoon on their nose for 10 seconds?", time: 30 },
+    { text: "Can the player crab walk across the room and back (minimum 5 meters each way)?", time: 45 },
+    { text: "Can the player clap their hands 100 times in 30 seconds?", time: 30 },
+    { text: "Can the player do 5 perfect lunges on each leg (10 total) with hands behind their head?", time: 45 },
+    { text: "Can the player roll a pencil from the back of their hand to their fingertips without dropping it?", time: 30 },
+    { text: "Can the player bounce a ball between their legs in a figure-8 pattern 10 times?", time: 30 },
+    { text: "Can the player stand on a pillow on one foot for 20 seconds?", time: 30 },
+    { text: "Can the player write their name in the air with their foot while standing on the other leg?", time: 30 },
+    { text: "Can the player do 10 high knees running in place while clapping above their head each time?", time: 30 },
+    { text: "Can the player pick up 10 small objects from the floor using only their toes and place them in a container?", time: 45 },
+    { text: "Can the player hold a yoga tree pose for 20 seconds on each leg?", time: 45 },
+    { 
+      text: "Can the player succeed in throwing a spontaneous backpack onto their knee? The backpack must land and stay on the knee. 3 tries - you must succeed within one attempt.",
+      time: 30
+    },
+    {
+      text: "Can the player lift a chair and throw it, then catch it before it hits the ground? You need to repeat this 3 times successfully. 3 attempts.",
+      time: 30
+    },
+    {
+      text: "Can the player lie down and try to reach/push their arms toward the door then grab it? 3 attempts - try to grab the door by extending from lying position.",
+      time: 30
+    },
+    {
+      text: "Can the player maintain flight with a pillow? Hold a pillow jumping continuously from one side. Currently under a jacket you must keep the pillow. 5 attempts within 30 seconds without dropping.",
+      time: 30
+    },
+    {
+      text: "Can the player rotate their eyes back through 30 seconds?",
+      time: 30
+    },
+    {
+      text: "Can the player walk/move forward with completely straightened legs in a peculiar way for 20 steps/strides?",
+      time: 30
+    },
+    {
+      text: "Can the player succeed in picking up something (like a mushroom) from the floor with their toes/feet 5 times, grabbing them and lifting to hand level? 2 attempts required within 4 tries.",
+      time: 30
+    },
+    {
+      text: "Can the player sit and throw a lifted/raised cushion to position and keep it there? A position where the legs are lifted toward the ceiling, and the body sits at some angle. 3 tries - at least once without losing balance.",
+      time: 30
+    },
+    {
+      text: "Can the player maintain a lying position for 30 seconds, keeping their head and feet up while giving a thumbs up sign on the ground? Body must stay in similar position throughout.",
+      time: 30
+    },
+    {
+      text: "Can the player push/press their wrists or elbows toward opposite directions while lying down with legs straightened? Tasks assigned: Push from the shoulder level back. 2 attempts within 4 tries.",
+      time: 30
+    },
+    {
+      text: "Can the player succeed at clapping coins between their hands through 15 seconds? 3 tries.",
+      time: 30
+    },
+    {
+      text: "Can the player succeed in throwing a puddle to a cushion and catching it? Throw from a distance of 3 meters. 2 tries.",
+      time: 30
+    }
+  ];
+
+  const mentalTasks = [
+    { text: "Can the player fold an A4 sheet 4 times using only one hand?", time: 15 },
+    { text: "Name 5 brands of motorcycles in 15 seconds", time: 15 },
+    { text: "Count backwards from 100 to 85", time: 30 },
+    { text: "Name all months with exactly 30 days", time: 30 },
+    { text: "Say the alphabet backwards from Z to P", time: 30 },
+    { text: "Name 8 countries in Europe in 20 seconds", time: 30 },
+    { text: "Spell your name backwards out loud", time: 15 },
+    { text: "Name 7 items you'd find in a kitchen", time: 30 },
+    { text: "Count to 20 in 2s (2, 4, 6...)", time: 15 },
+    { text: "Name the days of the week in reverse order", time: 30 },
+    { text: "List 6 animals that live in water", time: 30 },
+    { text: "Recite the multiplication table of 7 from 7x1 to 7x10", time: 30 },
+    { text: "Name 10 capitals of countries (any continent)", time: 30 },
+    { text: "Say 5 words that rhyme with 'cat'", time: 20 },
+    { text: "Count from 1 to 30 but replace every number divisible by 3 with 'buzz'", time: 45 },
+    { text: "Name 8 fruits in 20 seconds", time: 20 },
+    { text: "Say a tongue twister 5 times quickly: 'Red leather yellow leather'", time: 30 },
+    { text: "Name all the planets in our solar system", time: 30 },
+    { text: "List 7 body parts in a foreign language of your choice", time: 30 },
+    { text: "Spell 'supercalifragilisticexpialidocious' out loud", time: 45 },
+    { text: "Name 10 colors in 15 seconds", time: 15 },
+    { text: "Count backwards from 50 to 30 in 3s (50, 47, 44...)", time: 30 },
+    { text: "Name 6 musical instruments", time: 20 },
+    { text: "Say the alphabet but skip every third letter (A, B, D, E, G...)", time: 45 },
+    { text: "Name 5 Shakespeare plays", time: 30 },
+    { text: "List 8 vegetables in 20 seconds", time: 20 },
+    { text: "For a special person: One person reading this card (neither Lowell nor the card's reader) gets to name 10 words starting with 'Car'. They complete it in 7 out of 10 words.", time: 30 },
+    { text: "JUNIOR: Can the player give the name of four Marvel Kings? (np. Marsylanka Marsz [np. Mars Bar])", time: 30 },
+    { text: "Can the player name five network fast-food brands?", time: 30 },
+    { text: "Can the player give 5 names of sitcoms?", time: 30 },
+    { text: "JUNIOR: Can the player name 4 brands of sportswear? 3 brands of sportswear?", time: 30 },
+    { text: "JUNIOR: Can the player give 3 names from typical names? Team names of which they might call Liter S?", time: 30 },
+    { text: "Can the player give 7 drinks based on alcohol which have their names? (np. vodka, mleko, kawa)", time: 30 },
+    { text: "Can the player succeed in naming 5 musical cow names, which they know? (np. Marta Magdala)", time: 30 },
+    { text: "Can the player succeed in naming 10 dessert-type dishes, which they have small magic? (np. Marta Magda)", time: 30 },
+    { text: "Can the player give 6 Pokemon?", time: 30 },
+    { text: "Can the player succeed in giving 10 million places, which have 5 letters? 5 million.", time: 30 },
+    { text: "Can the player succeed in giving 5 network terms related to social clubs/jerseywear? 3 network.", time: 30 },
+    { text: "Can the player succeed in giving 5 stadiums for soccer? 2 stadiums of soccer.", time: 30 },
+    { text: "Can the player succeed in giving 4 formats of formulas? Formula 1?", time: 30 },
+    { text: "Can the player give 9 objects which may be found in the kitchen? 5 objects which may be found.", time: 30 },
+    { text: "Can the player succeed in giving 5 animals which may be found in a zoo? 3 animals.", time: 30 },
+    { text: "Can the player give the words of one z polszych slów od typu? (That one with words) Not confirmed. Not ELECTROMAGNETYZM NIEWYPOWIEDZANY", time: 30 },
+    { text: "Can the player succeed in giving 2 kontakty ze swojego telefonu (całą nazwa, numerem)? Can the player give 2 contacts from their phone (full name and number) by memory? 1 kontakt z numerem.", time: 30 },
+    { text: "Can the player give 6 rozwywch przy/prawy? Can the player give 6 correct/true answers?", time: 30 },
+    { text: "Can the player succeed in giving 3 different answers?", time: 30 },
+    { text: "Can the player succeed in giving 3 brands of cars? 2 brands of cars which may start with the same letter C?", time: 30 },
+    { text: "Can the player succeed in giving 2 malki samochód, które zaczynają się na literę C? Can the player succeed in giving 2 car brands which start with letter C?", time: 30 },
+    { text: "Can the player succeed in giving 8 parts of cars?", time: 30 },
+    { text: "Can the player succeed in giving 5 objects which may be found in the kitchen and may be in nazwa (finding 5 items with cooking/kitchen terminology)?", time: 30 },
+    { text: "Can the player succeed in giving 4 fruit types which may be in the 6 letter?", time: 30 },
+    { text: "Can the player succeed in giving 6 brands (collenej) przy czy ma się na kolena COLA? Can the player give 6 brands related to or that may have COLA? First brand would be CCOA. 4 brands.", time: 30 },
+    { text: "Can the player succeed in giving 5 movies with James Bondem? Can the player give 5 movies with James Bond? 2 films with James Bondem.", time: 30 },
+    { text: "Can the player succeed in giving 10 Disney movies?", time: 30 },
+    { text: "Can the player succeed in giving imię żeńskie i męskie, które zaczynają - sport, które zaczynają owocen - i sportsmen names which start with letter J?", time: 30 },
+    { text: "Can the player succeed in giving 10 radio stations? (np. RMF, FM, Radio ZET) 3 stage radiowe.", time: 30 },
+    { text: "Can the player succeed in giving 3 fairy tales by H.C. Andersen?", time: 30 },
+    { text: "Can the player succeed in giving 8 comic books?", time: 30 },
+    { text: "Can the player succeed in giving 10 states/countries USA?", time: 30 },
+    { text: "Can the player succeed in giving 3 states USA?", time: 30 },
+    { text: "Can the player succeed in giving multiplication tables from 7 to 70 in 60?", time: 30 },
+    { text: "Can the player succeed in giving 4 fruits with the letter 6 letters?", time: 30 },
+    { text: "Can the player succeed in giving 8 items that may be found in the box (cabinet)?", time: 30 },
+    { text: "Can the player succeed in giving items counted from 1 to 10 nie używając długopisu?", time: 30 },
+    { text: "Can the player succeed in giving 6 countries that start with the letter P? First is POLSKA. 4 countries.", time: 30 },
+    { text: "Can the player succeed in giving 6 next title books, przy czym kolejne imię zaczyna się na ostatnią literę poprzedniego? Can the player give 6 books where each subsequent title starts with the last letter of the previous one? (np. Ogniem i MIECZEM) 4 books.", time: 30 },
+    { text: "Can the player succeed in giving 6 names of months, przy czym which takes this I MICHAŁ (np. Michał - Łukasz - Zenon - Norbert - Tomasz - Zbigniew) 4 names.", time: 30 },
+    { text: "Can the player succeed in giving JUNIOR: 55-60 seconds, when you ask the question tak czy nie przekroczyć 60 sekund? Can the player count to 55-60 seconds so as not to exceed 60 seconds?", time: 30 },
+    { text: "Can the player succeed in giving JUNIOR: oszacować, kiedy minie 50-60 sekund tak by nie przekroczyć 60 sekund? Can the player estimate when 50-60 seconds pass so as not to exceed 60 seconds?", time: 30 },
+    { text: "Can the player succeed in giving 2 fruit, które mają 5 liter? (np banan, mango) 1 owoc.", time: 30 },
+    { text: "Can the player succeed in giving 6 cities, przy czym nazwa kolejnego zaczyna się na ostatnią literę poprzedniego? First name is SZTOKHOLM. 4 cities.", time: 30 },
+    { text: "Can the player succeed in giving 5 cities, których may 4 litery? (np Olaj, Adam) 3 cities.", time: 30 },
+    { text: "Can the player succeed in giving 5 cities z których zwierzęta? (np szczenię, żrebię) 3 cities younger.", time: 30 },
+    { text: "Can the player succeed in giving JUNIOR: 4 synonyms \"słowa\" \"policja\"? 2 synonyms \"słowa\" \"policja\"?", time: 30 },
+    { text: "Can the player succeed in giving imię żeńskie i męskie, które zaczynają się na literę K? Can the player give a female and male name that starts with letter K?", time: 30 },
+    { text: "Can the player succeed in giving imię zespołu, sport, które zaczynają owocen i sport? Can the player give team names that start with fruit and sport?", time: 30 },
+    { text: "Can the player succeed in giving wymienić dwa kraje, których flagi nie mają ani jednego koloru? Can the player name two countries whose flags do not have a single identical color?", time: 30 },
+    { text: "Can the player succeed in giving 5 marek motocykli? Can the player succeed in giving 5 motorcycle brands? JUNIOR: 2 marki motocykli? 2 motorcycle brands?", time: 30 },
+    { text: "Can the player succeed in giving JUNIOR: wszytkie miesiące, które mają dokładnie 30 dni? najdokładnie 30 days?", time: 30 },
+    { text: "Can the player succeed in giving 2 miesiące, które mają dokładnie 30 dni? Can the player give 2 months that have exactly 30 days? Dokładnie 30 dni?", time: 30 },
+    { text: "Can the player succeed in giving 8 mebli? Can the player succeed in giving 8 furniture? JUNIOR: 4 mebli? 4 furniture?", time: 30 }
+  ];
+
+  const diceFaces = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // ---- Connection / game identity ----
+  const params = new URLSearchParams(window.location.search);
+  const urlGameId = params.get('g');
+  const urlPlayerId = params.get('p');
+
+  const [gameId, setGameId] = useState(urlGameId || null);
+  const [myPlayerId, setMyPlayerId] = useState(urlPlayerId !== null ? Number(urlPlayerId) : null);
+  const [gs, setGs] = useState(null);
+  const [loading, setLoading] = useState(!!urlGameId);
+  const [apiError, setApiError] = useState(null);
+  const [betError, setBetError] = useState(null);
+  const [now, setNow] = useState(Date.now());
+  const [localSetup, setLocalSetup] = useState({
+    numPlayers: 3,
+    gameTime: 30,
+    playerNames: ['', '', ''],
+    setupStep: 'config'
+  });
+  const [copiedId, setCopiedId] = useState(null);
+
+  const apiBase = () => `${window.location.origin}/api/games`;
+
+  const claimPlayer = (id) => {
+    setMyPlayerId(id);
+    const url = new URL(window.location.href);
+    url.searchParams.set('p', id);
+    window.history.replaceState(null, '', url.toString());
+  };
+
+  const getShareUrl = (playerId) => {
+    const url = new URL(window.location.origin + window.location.pathname);
+    url.searchParams.set('g', gameId);
+    url.searchParams.set('p', playerId);
+    return url.toString();
+  };
+
+  const getQrImageUrl = (url) =>
+    `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(url)}`;
+
+  const copyLink = async (playerId) => {
+    const url = getShareUrl(playerId);
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch (e) {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = url;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      } catch (e2) {}
+    }
+    setCopiedId(playerId);
+    setTimeout(() => setCopiedId(prev => (prev === playerId ? null : prev)), 2000);
+  };
+
+  // ---- Polling ----
+  useEffect(() => {
+    if (!gameId) return;
+    let cancelled = false;
+    const refresh = async () => {
+      try {
+        const res = await fetch(`${apiBase()}/${gameId}`);
+        if (!res.ok) throw new Error('not found');
+        const data = await res.json();
+        if (!cancelled) {
+          setGs(data);
+          setApiError(null);
+        }
+      } catch (e) {
+        if (!cancelled) setApiError("Can't reach the game server. Check it's still running and you're on the same network.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    refresh();
+    const interval = setInterval(refresh, 1500);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [gameId]);
+
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const endGameTriggeredRef = React.useRef(false);
+  useEffect(() => {
+    if (!gs || gs.phase === 'gameOver' || gs.phase === 'lobby' || !gs.gameEndsAt) return;
+    if (now >= gs.gameEndsAt && !endGameTriggeredRef.current) {
+      endGameTriggeredRef.current = true;
+      endGame();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [now, gs]);
+
+  const post = async (path, body) => {
+    try {
+      const res = await fetch(`${apiBase()}/${gameId}${path}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body || {})
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        return { error: data.error || 'Something went wrong' };
+      }
+      setGs(data);
+      setApiError(null);
+      return { data };
+    } catch (e) {
+      setApiError("Can't reach the game server. Check it's still running and you're on the same network.");
+      return { error: 'network error' };
+    }
+  };
+
+  const createGame = async () => {
+    try {
+      const res = await fetch(apiBase() + '/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          numPlayers: localSetup.numPlayers,
+          gameTimeMinutes: localSetup.gameTime,
+          playerNames: localSetup.playerNames
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setApiError(data.error || 'Could not create the game');
+        return;
+      }
+      setGameId(data.gameId);
+      setGs(data.state);
+      const url = new URL(window.location.href);
+      url.searchParams.set('g', data.gameId);
+      window.history.replaceState(null, '', url.toString());
+    } catch (e) {
+      setApiError("Can't reach the game server. Is it running?");
+    }
+  };
+
+  const startTheGame = () => post('/start');
+  const rollDice = () => post('/roll');
+  const selectBlindBetType = (type) => post('/blindType', { type });
+  const revealBlindTask = () => post('/reveal');
+
+  const currentTaskObject = (state) => {
+    if (!state || !state.currentTaskType || state.currentTaskIndex == null) return null;
+    const list = state.currentTaskType === 'skill' ? skillTasks : mentalTasks;
+    return { ...list[state.currentTaskIndex], type: state.currentTaskType };
+  };
+
+  const startChallenge = () => {
+    const task = currentTaskObject(gs);
+    return post('/startChallenge', { taskTimeSeconds: (task && task.time) || 30 });
+  };
+
+  const placeBet = async (willSucceed, amount) => {
+    if (myPlayerId === null) return;
+    setBetError(null);
+    const result = await post('/bet', { playerId: myPlayerId, willSucceed, amount });
+    if (result.error) setBetError(result.error);
+  };
+
+  const recordResult = (success) => post('/result', { success });
+  const nextTurn = () => post('/nextTurn');
+  const endGame = () => post('/end');
+
+  const renderJoinBar = () => {
+    if (myPlayerId !== null || !gs || !gs.players) return null;
+    return (
+      <div className="bg-yellow-50 border-2 border-yellow-400 rounded-lg p-3 mb-4 text-center">
+        <p className="font-semibold mb-2 text-sm">Playing on this phone? Tap your name:</p>
+        <div className="flex flex-wrap gap-2 justify-center">
+          {gs.players.map(p => (
+            <button
+              key={p.id}
+              onClick={() => claimPlayer(p.id)}
+              className="px-3 py-1 bg-yellow-400 rounded-lg font-semibold hover:bg-yellow-500 text-sm"
+            >
+              {p.name}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const renderDiagram = (diagramType) => {
+    if (diagramType === 'fold') {
+      return (
+        <div className="bg-white p-4 rounded-lg border-2 border-gray-300 mb-4">
+          <svg viewBox="0 0 400 200" className="w-full h-auto">
+            {/* Paper folding sequence */}
+            <rect x="20" y="80" width="60" height="80" fill="#e0e0e0" stroke="#333" strokeWidth="2"/>
+            <text x="50" y="125" textAnchor="middle" fontSize="20">①</text>
+            
+            <path d="M 90 120 L 110 120" stroke="#333" strokeWidth="2" markerEnd="url(#arrowhead)"/>
+            
+            <g transform="translate(120, 80)">
+              <rect width="40" height="80" fill="#d0d0d0" stroke="#333" strokeWidth="2"/>
+              <line x1="20" y1="0" x2="20" y2="80" stroke="#666" strokeWidth="2" strokeDasharray="4"/>
+            </g>
+            <text x="140" y="125" textAnchor="middle" fontSize="20">②</text>
+            
+            <path d="M 170 120 L 190 120" stroke="#333" strokeWidth="2" markerEnd="url(#arrowhead)"/>
+            
+            <g transform="translate(200, 90)">
+              <rect width="40" height="60" fill="#c0c0c0" stroke="#333" strokeWidth="2"/>
+              <line x1="20" y1="0" x2="20" y2="60" stroke="#666" strokeWidth="2" strokeDasharray="4"/>
+            </g>
+            <text x="220" y="125" textAnchor="middle" fontSize="20">③</text>
+            
+            <path d="M 250 120 L 270 120" stroke="#333" strokeWidth="2" markerEnd="url(#arrowhead)"/>
+            
+            <g transform="translate(280, 100)">
+              <rect width="40" height="40" fill="#b0b0b0" stroke="#333" strokeWidth="2"/>
+              <line x1="20" y1="0" x2="20" y2="40" stroke="#666" strokeWidth="2" strokeDasharray="4"/>
+            </g>
+            <text x="300" y="125" textAnchor="middle" fontSize="20">④</text>
+            
+            <defs>
+              <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                <polygon points="0 0, 10 3, 0 6" fill="#333"/>
+              </marker>
+            </defs>
+          </svg>
+          <p className="text-center text-sm text-gray-600 mt-2">Fold the paper 4 times using only ONE hand</p>
+        </div>
+      );
+    }
+    
+    if (diagramType === 'situp') {
+      return (
+        <div className="bg-white p-4 rounded-lg border-2 border-gray-300 mb-4">
+          <svg viewBox="0 0 400 200" className="w-full h-auto">
+            {/* Person lying down */}
+            <g transform="translate(50, 120)">
+              <circle cx="0" cy="0" r="15" fill="#ffc107" stroke="#333" strokeWidth="2"/>
+              <line x1="0" y1="15" x2="0" y2="60" stroke="#333" strokeWidth="3"/>
+              <line x1="0" y1="60" x2="-30" y2="90" stroke="#333" strokeWidth="3"/>
+              <line x1="0" y1="60" x2="30" y2="90" stroke="#333" strokeWidth="3"/>
+              <line x1="0" y1="30" x2="-25" y2="20" stroke="#333" strokeWidth="3"/>
+              <line x1="0" y1="30" x2="25" y2="20" stroke="#333" strokeWidth="3"/>
+            </g>
+            <line x1="20" y1="150" x2="120" y2="150" stroke="#666" strokeWidth="2"/>
+            <text x="70" y="170" textAnchor="middle" fontSize="16">Start</text>
+            
+            <path d="M 130 100 L 160 100" stroke="#333" strokeWidth="2" markerEnd="url(#arrowhead2)"/>
+            
+            {/* Person sitting up */}
+            <g transform="translate(220, 80)">
+              <circle cx="0" cy="0" r="15" fill="#ffc107" stroke="#333" strokeWidth="2"/>
+              <line x1="0" y1="15" x2="0" y2="50" stroke="#333" strokeWidth="3"/>
+              <line x1="0" y1="50" x2="0" y2="90" stroke="#333" strokeWidth="3"/>
+              <line x1="0" y1="90" x2="20" y2="90" stroke="#333" strokeWidth="3"/>
+              <line x1="0" y1="25" x2="-20" y2="15" stroke="#333" strokeWidth="3"/>
+              <line x1="0" y1="25" x2="20" y2="15" stroke="#333" strokeWidth="3"/>
+            </g>
+            <line x1="220" y1="170" x2="220" y2="150" stroke="#666" strokeWidth="2"/>
+            <text x="220" y="190" textAnchor="middle" fontSize="16">Sit Up</text>
+            
+            <defs>
+              <marker id="arrowhead2" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                <polygon points="0 0, 10 3, 0 6" fill="#333"/>
+              </marker>
+            </defs>
+          </svg>
+          <p className="text-center text-sm text-gray-600 mt-2">Keep legs STRAIGHT - 2 successful tries out of 3</p>
+        </div>
+      );
+    }
+    
+    if (diagramType === 'bottle') {
+      return (
+        <div className="bg-white p-4 rounded-lg border-2 border-gray-300 mb-4">
+          <svg viewBox="0 0 400 250" className="w-full h-auto">
+            {/* Hand with bottle */}
+            <g transform="translate(80, 150)">
+              <ellipse cx="0" cy="0" rx="20" ry="15" fill="#ffc107" stroke="#333" strokeWidth="2"/>
+              <rect x="-10" y="-60" width="20" height="60" fill="#4fc3f7" stroke="#333" strokeWidth="2" rx="3"/>
+              <rect x="-8" y="-70" width="16" height="12" fill="#81d4fa" stroke="#333" strokeWidth="2"/>
+            </g>
+            
+            {/* Pen being thrown */}
+            <g transform="translate(280, 80)">
+              <rect x="-3" y="0" width="6" height="40" fill="#333" rx="2"/>
+              <polygon points="0,-10 -4,0 4,0" fill="#ffc107"/>
+            </g>
+            
+            {/* Arrow showing throw direction */}
+            <path d="M 250 100 Q 180 120, 100 140" stroke="#2196F3" strokeWidth="3" fill="none" strokeDasharray="5,5" markerEnd="url(#arrowhead3)"/>
+            
+            <defs>
+              <marker id="arrowhead3" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                <polygon points="0 0, 10 3, 0 6" fill="#2196F3"/>
+              </marker>
+            </defs>
+          </svg>
+          <p className="text-center text-sm text-gray-600 mt-2">Throw pen → Catch it in bottle (2 successful catches)</p>
+        </div>
+      );
+    }
+    
+    if (diagramType === 'bottleflip') {
+      return (
+        <div className="bg-white p-4 rounded-lg border-2 border-gray-300 mb-4">
+          <svg viewBox="0 0 400 250" className="w-full h-auto">
+            {/* Bottle standing */}
+            <g transform="translate(80, 180)">
+              <rect x="-15" y="-50" width="30" height="50" fill="#4fc3f7" stroke="#333" strokeWidth="2" rx="3"/>
+              <rect x="-12" y="-60" width="24" height="12" fill="#81d4fa" stroke="#333" strokeWidth="2"/>
+              <line x1="-20" y1="0" x2="20" y2="0" stroke="#666" strokeWidth="2"/>
+            </g>
+            <text x="80" y="210" textAnchor="middle" fontSize="14">Start</text>
+            
+            {/* Bottle flipping */}
+            <g transform="translate(200, 100) rotate(180)">
+              <rect x="-15" y="-50" width="30" height="50" fill="#4fc3f7" stroke="#333" strokeWidth="2" rx="3"/>
+              <rect x="-12" y="-60" width="24" height="12" fill="#81d4fa" stroke="#333" strokeWidth="2"/>
+            </g>
+            
+            {/* Bottle landed */}
+            <g transform="translate(320, 180)">
+              <rect x="-15" y="-50" width="30" height="50" fill="#4fc3f7" stroke="#333" strokeWidth="2" rx="3"/>
+              <rect x="-12" y="-60" width="24" height="12" fill="#81d4fa" stroke="#333" strokeWidth="2"/>
+              <line x1="-20" y1="0" x2="20" y2="0" stroke="#666" strokeWidth="2"/>
+            </g>
+            <text x="320" y="210" textAnchor="middle" fontSize="14">Land!</text>
+            
+            {/* Arrows */}
+            <path d="M 100 170 Q 150 100, 180 110" stroke="#2196F3" strokeWidth="3" fill="none" markerEnd="url(#arrowhead4)"/>
+            <path d="M 220 110 Q 270 100, 300 170" stroke="#2196F3" strokeWidth="3" fill="none" markerEnd="url(#arrowhead4)"/>
+            
+            <defs>
+              <marker id="arrowhead4" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                <polygon points="0 0, 10 3, 0 6" fill="#2196F3"/>
+              </marker>
+            </defs>
+          </svg>
+          <p className="text-center text-sm text-gray-600 mt-2">Flip bottle to land upright (2 out of 3 tries)</p>
+        </div>
+      );
+    }
+    
+    if (diagramType === 'jumprope') {
+      return (
+        <div className="bg-white p-4 rounded-lg border-2 border-gray-300 mb-4">
+          <svg viewBox="0 0 400 250" className="w-full h-auto">
+            {/* Person jumping */}
+            <g transform="translate(200, 120)">
+              <circle cx="0" cy="0" r="20" fill="#ffc107" stroke="#333" strokeWidth="2"/>
+              <line x1="0" y1="20" x2="0" y2="70" stroke="#333" strokeWidth="3"/>
+              <line x1="0" y1="70" x2="-25" y2="100" stroke="#333" strokeWidth="3"/>
+              <line x1="0" y1="70" x2="25" y2="100" stroke="#333" strokeWidth="3"/>
+              <line x1="0" y1="35" x2="-40" y2="10" stroke="#333" strokeWidth="3"/>
+              <line x1="0" y1="35" x2="40" y2="10" stroke="#333" strokeWidth="3"/>
+              
+              {/* Rope */}
+              <path d="M -40 10 Q -50 120, -20 180" stroke="#ff5722" strokeWidth="3" fill="none"/>
+              <path d="M 40 10 Q 50 120, 20 180" stroke="#ff5722" strokeWidth="3" fill="none"/>
+              <line x1="-20" y1="180" x2="20" y2="180" stroke="#ff5722" strokeWidth="3"/>
+            </g>
+            
+            {/* Ground */}
+            <line x1="50" y1="220" x2="350" y2="220" stroke="#666" strokeWidth="3"/>
+            
+            {/* Jump indicators */}
+            <path d="M 180 100 L 180 80" stroke="#4CAF50" strokeWidth="2" markerEnd="url(#arrowhead5)"/>
+            <path d="M 220 100 L 220 80" stroke="#4CAF50" strokeWidth="2" markerEnd="url(#arrowhead5)"/>
+            
+            <defs>
+              <marker id="arrowhead5" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto">
+                <polygon points="0 0, 10 5, 0 10" fill="#4CAF50"/>
+              </marker>
+            </defs>
+          </svg>
+          <p className="text-center text-sm text-gray-600 mt-2">Jump rope for 15 seconds - raise knees high!</p>
+        </div>
+      );
+    }
+    
+    if (diagramType === 'eraser') {
+      return (
+        <div className="bg-white p-4 rounded-lg border-2 border-gray-300 mb-4">
+          <svg viewBox="0 0 400 250" className="w-full h-auto">
+            {/* Hand */}
+            <g transform="translate(200, 180)">
+              <ellipse cx="0" cy="0" rx="30" ry="20" fill="#ffc107" stroke="#333" strokeWidth="2"/>
+              <rect x="-8" y="-40" width="16" height="40" fill="#ffc107" stroke="#333" strokeWidth="2"/>
+            </g>
+            
+            {/* Eraser on hand */}
+            <rect x="185" y="165" width="30" height="10" fill="#e91e63" stroke="#333" strokeWidth="2" rx="2"/>
+            <text x="200" y="158" textAnchor="middle" fontSize="12">①</text>
+            
+            {/* Eraser thrown up */}
+            <g transform="translate(200, 80)">
+              <rect x="-15" y="-5" width="30" height="10" fill="#e91e63" stroke="#333" strokeWidth="2" rx="2"/>
+            </g>
+            <text x="200" y="65" textAnchor="middle" fontSize="12">②</text>
+            
+            {/* Arrow up */}
+            <path d="M 200 160 L 200 90" stroke="#2196F3" strokeWidth="3" markerEnd="url(#arrowhead6)"/>
+            
+            {/* Ground */}
+            <line x1="100" y1="220" x2="300" y2="220" stroke="#666" strokeWidth="3"/>
+            <text x="200" y="240" textAnchor="middle" fontSize="14">Hit floor → Catch!</text>
+            
+            <defs>
+              <marker id="arrowhead6" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto">
+                <polygon points="0 0, 10 5, 0 10" fill="#2196F3"/>
+              </marker>
+            </defs>
+          </svg>
+          <p className="text-center text-sm text-gray-600 mt-2">Throw eraser up → Hit floor → Catch it! (2 out of 3)</p>
+        </div>
+      );
+    }
+    
+    if (diagramType === 'bounce') {
+      return (
+        <div className="bg-white p-4 rounded-lg border-2 border-gray-300 mb-4">
+          <svg viewBox="0 0 400 250" className="w-full h-auto">
+            {/* Wall */}
+            <rect x="350" y="0" width="10" height="200" fill="#8b4513"/>
+            <text x="330" y="220" fontSize="14" fill="#666">Wall</text>
+            
+            {/* Floor */}
+            <line x1="0" y1="200" x2="360" y2="200" stroke="#666" strokeWidth="3"/>
+            <text x="180" y="230" textAnchor="middle" fontSize="14" fill="#666">Floor</text>
+            
+            {/* Player */}
+            <g transform="translate(50, 140)">
+              <circle cx="0" cy="0" r="12" fill="#ffc107" stroke="#333" strokeWidth="2"/>
+              <line x1="0" y1="12" x2="0" y2="40" stroke="#333" strokeWidth="3"/>
+              <line x1="0" y1="40" x2="-15" y2="60" stroke="#333" strokeWidth="3"/>
+              <line x1="0" y1="40" x2="15" y2="60" stroke="#333" strokeWidth="3"/>
+              <line x1="0" y1="22" x2="25" y2="15" stroke="#333" strokeWidth="3"/>
+              <line x1="0" y1="22" x2="-15" y2="30" stroke="#333" strokeWidth="3"/>
+            </g>
+            
+            {/* Ball path - checkmark shape */}
+            <circle cx="80" cy="120" r="8" fill="#ff5722" stroke="#333" strokeWidth="2"/>
+            
+            {/* Path arrows */}
+            <path d="M 85 125 Q 180 180, 280 180" stroke="#2196F3" strokeWidth="3" fill="none" strokeDasharray="5,5" markerEnd="url(#arrowhead7)"/>
+            <text x="180" y="195" textAnchor="middle" fontSize="12" fill="#2196F3">①</text>
+            
+            <path d="M 285 175 L 345 120" stroke="#2196F3" strokeWidth="3" fill="none" strokeDasharray="5,5" markerEnd="url(#arrowhead7)"/>
+            <text x="320" y="140" fontSize="12" fill="#2196F3">②</text>
+            
+            <path d="M 340 115 Q 200 80, 80 115" stroke="#2196F3" strokeWidth="3" fill="none" strokeDasharray="5,5" markerEnd="url(#arrowhead7)"/>
+            <text x="200" y="70" textAnchor="middle" fontSize="12" fill="#2196F3">③</text>
+            
+            {/* Checkmark on floor */}
+            <path d="M 120 210 L 180 240 L 300 190" stroke="#4CAF50" strokeWidth="4" fill="none"/>
+            <text x="210" y="245" textAnchor="middle" fontSize="12" fill="#4CAF50">✓ shape</text>
+            
+            <defs>
+              <marker id="arrowhead7" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                <polygon points="0 0, 10 3, 0 6" fill="#2196F3"/>
+              </marker>
+            </defs>
+          </svg>
+          <p className="text-center text-sm text-gray-600 mt-2">① Bounce on floor → ② Hit wall → ③ Catch ball</p>
+        </div>
+      );
+    }
+    
+    if (diagramType === 'throwceiling') {
+      return (
+        <div className="bg-white p-4 rounded-lg border-2 border-gray-300 mb-4">
+          <svg viewBox="0 0 400 300" className="w-full h-auto">
+            {/* Ceiling */}
+            <line x1="0" y1="20" x2="400" y2="20" stroke="#666" strokeWidth="3"/>
+            <text x="200" y="15" textAnchor="middle" fontSize="14" fill="#666">Ceiling</text>
+            
+            {/* Floor */}
+            <line x1="0" y1="280" x2="400" y2="280" stroke="#666" strokeWidth="3"/>
+            <text x="200" y="298" textAnchor="middle" fontSize="14" fill="#666">Floor</text>
+            
+            {/* Ball on floor */}
+            <circle cx="200" cy="270" r="10" fill="#ff5722" stroke="#333" strokeWidth="2"/>
+            
+            {/* Path up */}
+            <path d="M 200 260 L 200 140" stroke="#2196F3" strokeWidth="3" fill="none" strokeDasharray="5,5" markerEnd="url(#arrowhead8)"/>
+            
+            {/* Bounce path */}
+            <path d="M 200 140 L 200 30" stroke="#4CAF50" strokeWidth="3" fill="none" strokeDasharray="5,5" markerEnd="url(#arrowhead9)"/>
+            <circle cx="200" cy="30" r="8" fill="#ff5722" stroke="#333" strokeWidth="2"/>
+            
+            <text x="220" y="200" fontSize="14" fill="#2196F3">①Bounce</text>
+            <text x="220" y="80" fontSize="14" fill="#4CAF50">②Hit ceiling</text>
+            
+            <defs>
+              <marker id="arrowhead8" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto">
+                <polygon points="0 0, 10 5, 0 10" fill="#2196F3"/>
+              </marker>
+              <marker id="arrowhead9" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto">
+                <polygon points="0 0, 10 5, 0 10" fill="#4CAF50"/>
+              </marker>
+            </defs>
+          </svg>
+          <p className="text-center text-sm text-gray-600 mt-2">Throw ball from floor to hit ceiling (1 out of 3 tries)</p>
+        </div>
+      );
+    }
+    
+    if (diagramType === 'dicestack') {
+      return (
+        <div className="bg-white p-4 rounded-lg border-2 border-gray-300 mb-4">
+          <svg viewBox="0 0 400 250" className="w-full h-auto">
+            {/* Floor */}
+            <line x1="50" y1="200" x2="350" y2="200" stroke="#666" strokeWidth="3"/>
+            
+            {/* Stacked dice */}
+            <g transform="translate(200, 50)">
+              <rect x="-15" y="120" width="30" height="30" fill="#fff" stroke="#333" strokeWidth="2" rx="3"/>
+              <circle cx="0" cy="135" r="2" fill="#333"/>
+              
+              <rect x="-15" y="85" width="30" height="30" fill="#fff" stroke="#333" strokeWidth="2" rx="3"/>
+              <circle cx="-5" cy="95" r="2" fill="#333"/>
+              <circle cx="5" cy="105" r="2" fill="#333"/>
+              
+              <rect x="-15" y="50" width="30" height="30" fill="#fff" stroke="#333" strokeWidth="2" rx="3"/>
+              <circle cx="-5" cy="60" r="2" fill="#333"/>
+              <circle cx="0" cy="65" r="2" fill="#333"/>
+              <circle cx="5" cy="70" r="2" fill="#333"/>
+              
+              <rect x="-15" y="15" width="30" height="30" fill="#fff" stroke="#333" strokeWidth="2" rx="3"/>
+              <circle cx="-7" cy="22" r="2" fill="#333"/>
+              <circle cx="7" cy="22" r="2" fill="#333"/>
+              <circle cx="-7" cy="38" r="2" fill="#333"/>
+              <circle cx="7" cy="38" r="2" fill="#333"/>
+              
+              <rect x="-15" y="-20" width="30" height="30" fill="#fff" stroke="#333" strokeWidth="2" rx="3"/>
+              <circle cx="-7" cy="-13" r="2" fill="#333"/>
+              <circle cx="0" cy="-13" r="2" fill="#333"/>
+              <circle cx="7" cy="-13" r="2" fill="#333"/>
+              <circle cx="0" cy="-3" r="2" fill="#333"/>
+              <circle cx="-7" cy="3" r="2" fill="#333"/>
+              <circle cx="7" cy="3" r="2" fill="#333"/>
+            </g>
+            
+            <text x="200" y="230" textAnchor="middle" fontSize="14" fill="#666">Stack 5 dice!</text>
+          </svg>
+          <p className="text-center text-sm text-gray-600 mt-2">Stack 5 dice on each other (2 out of 3 tries)</p>
+        </div>
+      );
+    }
+    
+    if (diagramType === 'pushup') {
+      return (
+        <div className="bg-white p-4 rounded-lg border-2 border-gray-300 mb-4">
+          <svg viewBox="0 0 400 200" className="w-full h-auto">
+            {/* Person in push-up position */}
+            <g transform="translate(200, 100)">
+              <circle cx="0" cy="0" r="15" fill="#ffc107" stroke="#333" strokeWidth="2"/>
+              <line x1="0" y1="15" x2="0" y2="50" stroke="#333" strokeWidth="3"/>
+              <line x1="0" y1="50" x2="-40" y2="70" stroke="#333" strokeWidth="3"/>
+              <line x1="0" y1="50" x2="40" y2="70" stroke="#333" strokeWidth="3"/>
+              <line x1="0" y1="25" x2="-35" y2="5" stroke="#333" strokeWidth="3"/>
+              <line x1="0" y1="25" x2="35" y2="5" stroke="#333" strokeWidth="3"/>
+            </g>
+            
+            {/* Floor */}
+            <line x1="100" y1="170" x2="300" y2="170" stroke="#666" strokeWidth="3"/>
+            
+            {/* Down arrow with "STOP 2s" */}
+            <path d="M 200 75 L 200 85" stroke="#ff0000" strokeWidth="3" markerEnd="url(#arrowhead10)"/>
+            <text x="220" y="90" fontSize="12" fill="#ff0000">STOP 2s</text>
+            
+            <defs>
+              <marker id="arrowhead10" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto">
+                <polygon points="0 0, 10 5, 0 10" fill="#ff0000"/>
+              </marker>
+            </defs>
+          </svg>
+          <p className="text-center text-sm text-gray-600 mt-2">5 push-ups with 2-second holds at bottom</p>
+        </div>
+      );
+    }
+    
+    if (diagramType === 'glassthrow') {
+      return (
+        <div className="bg-white p-4 rounded-lg border-2 border-gray-300 mb-4">
+          <svg viewBox="0 0 400 300" className="w-full h-auto">
+            {/* Person throwing */}
+            <g transform="translate(100, 80)">
+              <circle cx="0" cy="0" r="12" fill="#ffc107" stroke="#333" strokeWidth="2"/>
+              <line x1="0" y1="12" x2="0" y2="40" stroke="#333" strokeWidth="3"/>
+              <line x1="0" y1="40" x2="-15" y2="60" stroke="#333" strokeWidth="3"/>
+              <line x1="0" y1="40" x2="15" y2="60" stroke="#333" strokeWidth="3"/>
+              <line x1="0" y1="22" x2="30" y2="10" stroke="#333" strokeWidth="3"/>
+              <line x1="0" y1="22" x2="-20" y2="15" stroke="#333" strokeWidth="3"/>
+            </g>
+            
+            {/* Glass */}
+            <g transform="translate(130, 70)">
+              <path d="M -5,0 L -8,15 L 8,15 L 5,0 Z" fill="#87CEEB" stroke="#333" strokeWidth="2"/>
+            </g>
+            
+            {/* Throw path */}
+            <path d="M 135 75 Q 180 120, 200 260" stroke="#2196F3" strokeWidth="3" fill="none" strokeDasharray="5,5" markerEnd="url(#arrowhead11)"/>
+            
+            {/* Glass landed */}
+            <g transform="translate(200, 270)">
+              <path d="M -5,0 L -8,15 L 8,15 L 5,0 Z" fill="#87CEEB" stroke="#333" strokeWidth="2"/>
+              <text x="0" y="30" textAnchor="middle" fontSize="12" fill="#4CAF50">✓Safe!</text>
+            </g>
+            
+            {/* Floor */}
+            <line x1="50" y1="280" x2="350" y2="280" stroke="#666" strokeWidth="3"/>
+            
+            {/* Height marker */}
+            <line x1="350" y1="80" x2="350" y2="280" stroke="#ff0000" strokeWidth="2" strokeDasharray="4"/>
+            <text x="360" y="180" fontSize="12" fill="#ff0000">3m</text>
+            
+            <defs>
+              <marker id="arrowhead11" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto">
+                <polygon points="0 0, 10 5, 0 10" fill="#2196F3"/>
+              </marker>
+            </defs>
+          </svg>
+          <p className="text-center text-sm text-gray-600 mt-2">Throw glass from 3m height - it must not break!</p>
+        </div>
+      );
+    }
+    
+    if (diagramType === 'cupbounce') {
+      return (
+        <div className="bg-white p-4 rounded-lg border-2 border-gray-300 mb-4">
+          <svg viewBox="0 0 400 250" className="w-full h-auto">
+            {/* Hand throwing */}
+            <g transform="translate(80, 120)">
+              <ellipse cx="0" cy="0" rx="20" ry="15" fill="#ffc107" stroke="#333" strokeWidth="2"/>
+            </g>
+            
+            {/* Cup being thrown */}
+            <g transform="translate(100, 100)">
+              <path d="M -8,0 L -10,15 L 10,15 L 8,0 Z" fill="#4fc3f7" stroke="#333" strokeWidth="2"/>
+            </g>
+            
+            {/* Throw path */}
+            <path d="M 105 105 Q 180 160, 250 200" stroke="#2196F3" strokeWidth="3" fill="none" strokeDasharray="5,5" markerEnd="url(#arrowhead12)"/>
+            
+            {/* Cup landed upright */}
+            <g transform="translate(250, 195)">
+              <path d="M -8,0 L -10,15 L 10,15 L 8,0 Z" fill="#4fc3f7" stroke="#333" strokeWidth="2"/>
+              <text x="0" y="30" textAnchor="middle" fontSize="12" fill="#4CAF50">Upright!</text>
+            </g>
+            
+            {/* Floor */}
+            <line x1="50" y1="210" x2="350" y2="210" stroke="#666" strokeWidth="3"/>
+            
+            <defs>
+              <marker id="arrowhead12" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto">
+                <polygon points="0 0, 10 5, 0 10" fill="#2196F3"/>
+              </marker>
+            </defs>
+          </svg>
+          <p className="text-center text-sm text-gray-600 mt-2">Throw cup to land upright (2 out of 4 tries)</p>
+        </div>
+      );
+    }
+    
+    return null;
+  };
+
+  if (apiError && !gs) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center p-4">
+        <div className="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full text-center">
+          <h1 className="text-2xl font-bold mb-3 text-purple-600">Can't reach the game</h1>
+          <p className="text-gray-600 mb-6">{apiError}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="w-full bg-purple-600 text-white py-3 rounded-lg font-bold text-lg hover:bg-purple-700 transition"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading && !gs) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center p-4">
+        <p className="text-white text-lg font-semibold">Loading game…</p>
+      </div>
+    );
+  }
+
+  if (!gs) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center p-4">
+        <div className="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full">
+          <h1 className="text-4xl font-bold text-center mb-6 text-purple-600">Bet You Can't!</h1>
+
+          {localSetup.setupStep === 'config' && (
+            <div className="space-y-6">
+              <div>
+                <label className="block text-gray-700 font-semibold mb-2">Number of Players (3-8)</label>
+                <input
+                  type="number"
+                  min="3"
+                  max="8"
+                  value={localSetup.numPlayers}
+                  onChange={(e) => {
+                    const n = parseInt(e.target.value) || 3;
+                    setLocalSetup(prev => ({
+                      ...prev,
+                      numPlayers: n,
+                      playerNames: Array.from({ length: n }, (_, i) => prev.playerNames[i] || '')
+                    }));
+                  }}
+                  className="w-full px-4 py-2 border-2 border-purple-300 rounded-lg focus:border-purple-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-gray-700 font-semibold mb-2">Game Duration (minutes)</label>
+                <input
+                  type="number"
+                  min="10"
+                  max="60"
+                  value={localSetup.gameTime}
+                  onChange={(e) => setLocalSetup(prev => ({ ...prev, gameTime: parseInt(e.target.value) || 30 }))}
+                  className="w-full px-4 py-2 border-2 border-purple-300 rounded-lg focus:border-purple-500 outline-none"
+                />
+              </div>
+
+              <button
+                onClick={() => setLocalSetup(prev => ({ ...prev, setupStep: 'names' }))}
+                className="w-full bg-purple-600 text-white py-3 rounded-lg font-bold text-lg hover:bg-purple-700 transition"
+              >
+                Next: Set Player Names
+              </button>
+
+              <div className="p-4 bg-purple-50 rounded-lg text-sm text-gray-700">
+                <p className="font-semibold mb-2">How to Play:</p>
+                <ul className="list-disc list-inside space-y-1">
+                  <li>Roll dice and move around the board</li>
+                  <li>Complete skill or mental challenges</li>
+                  <li>Bet on whether others will succeed</li>
+                  <li>Collect the most money to win!</li>
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {localSetup.setupStep === 'names' && (
+            <div className="space-y-6">
+              <button
+                onClick={() => setLocalSetup(prev => ({ ...prev, setupStep: 'config' }))}
+                className="text-purple-600 hover:text-purple-700 font-semibold mb-2"
+              >
+                ← Back
+              </button>
+
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">Enter Player Names</h2>
+
+              <div className="space-y-3">
+                {Array.from({ length: localSetup.numPlayers }).map((_, index) => (
+                  <div key={index}>
+                    <label className="block text-gray-700 font-semibold mb-1">Player {index + 1}</label>
+                    <input
+                      type="text"
+                      value={localSetup.playerNames[index] || ''}
+                      onChange={(e) => {
+                        const names = [...localSetup.playerNames];
+                        names[index] = e.target.value;
+                        setLocalSetup(prev => ({ ...prev, playerNames: names }));
+                      }}
+                      placeholder={`Player ${index + 1}`}
+                      className="w-full px-4 py-2 border-2 border-purple-300 rounded-lg focus:border-purple-500 outline-none"
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={createGame}
+                className="w-full bg-purple-600 text-white py-3 rounded-lg font-bold text-lg hover:bg-purple-700 transition"
+              >
+                Create Game
+              </button>
+
+              <p className="text-sm text-gray-500 text-center">Leave blank to use default names</p>
+            </div>
+          )}
+          {apiError && <p className="text-red-600 text-sm text-center mt-3">{apiError}</p>}
+        </div>
+      </div>
+    );
+  }
+
+  if (gs.phase === 'lobby') {
+    const isMe = myPlayerId !== null && gs.players[myPlayerId];
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-600 to-blue-600 p-4">
+        <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-2xl p-6 sm:p-8">
+          <h1 className="text-3xl font-bold text-center mb-2 text-purple-600">Bet You Can't!</h1>
+          <p className="text-center text-gray-600 mb-6">
+            Each player scans their own QR code (or taps their name below) on their own phone. Anyone can start the game once everyone's in.
+          </p>
+
+          {isMe ? (
+            <div className="bg-green-50 border-2 border-green-400 rounded-lg p-4 mb-6 text-center">
+              <p className="font-bold text-green-700">You're in as {gs.players[myPlayerId].name} ✅</p>
+            </div>
+          ) : renderJoinBar()}
+
+          <div className="grid sm:grid-cols-2 gap-4 mb-6">
+            {gs.players.map(p => (
+              <div key={p.id} className="border-2 border-purple-200 rounded-lg p-4 text-center">
+                <p className="font-semibold mb-2">{p.name}</p>
+                <img
+                  src={getQrImageUrl(getShareUrl(p.id))}
+                  alt={`QR code for ${p.name}`}
+                  className="mx-auto mb-2 rounded"
+                  width={140}
+                  height={140}
+                />
+                <button
+                  onClick={() => copyLink(p.id)}
+                  className="w-full mb-2 px-3 py-1.5 bg-purple-100 text-purple-700 text-sm font-semibold rounded-lg hover:bg-purple-200"
+                >
+                  {copiedId === p.id ? 'Copied ✓' : 'Copy Link'}
+                </button>
+                <p className="text-xs text-gray-500 break-all">{getShareUrl(p.id)}</p>
+              </div>
+            ))}
+          </div>
+
+          <button
+            onClick={startTheGame}
+            className="w-full bg-purple-600 text-white py-3 rounded-lg font-bold text-lg hover:bg-purple-700 transition"
+          >
+            Start Game ▶
+          </button>
+          {apiError && <p className="text-red-600 text-sm text-center mt-3">{apiError}</p>}
+          <p className="text-xs text-gray-400 text-center mt-4">
+            Players need to be on the same WiFi network as this server (or reach its address over the internet).
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (gs.phase === 'gameOver') {
+    const winner = gs.players.reduce((prev, current) => (current.money > prev.money ? current : prev));
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center p-4">
+        <div className="bg-white rounded-xl shadow-2xl p-8 max-w-2xl w-full">
+          <div className="text-center mb-8">
+            <div className="text-6xl mb-4">🏆</div>
+            <h1 className="text-4xl font-bold text-gray-800 mb-2">Game Over!</h1>
+            <h2 className="text-2xl text-purple-600">Winner: {winner.name}</h2>
+          </div>
+
+          <div className="space-y-3">
+            {[...gs.players]
+              .sort((a, b) => b.money - a.money)
+              .map((player, index) => (
+                <div key={player.id} className="flex items-center justify-between bg-gray-50 p-4 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl font-bold text-gray-400">#{index + 1}</span>
+                    <span className="font-semibold">{player.name}</span>
+                  </div>
+                  <span className="text-xl font-bold text-green-600">€{player.money}</span>
+                </div>
+              ))}
+          </div>
+
+          <button
+            onClick={() => window.location.href = window.location.origin + window.location.pathname}
+            className="w-full mt-8 bg-purple-600 text-white py-3 rounded-lg font-bold hover:bg-purple-700 transition"
+          >
+            Play Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const currentTask = currentTaskObject(gs);
+  const currentPlayer = gs.players[gs.currentPlayerIndex];
+  const timeLeft = gs.gameEndsAt ? Math.max(0, Math.round((gs.gameEndsAt - now) / 1000)) : 0;
+  const challengeTimeLeft = gs.performEndsAt
+    ? Math.max(0, Math.ceil((gs.performEndsAt - now) / 1000))
+    : (currentTask ? currentTask.time : null);
+  const iAmCurrent = myPlayerId === gs.currentPlayerIndex;
+  const otherPlayers = gs.players.filter((_, i) => i !== gs.currentPlayerIndex);
+  const betsCount = Object.keys(gs.bets || {}).length;
+  const betsNeeded = gs.players.length - 1;
+  const myBet = myPlayerId !== null ? (gs.bets || {})[myPlayerId] : undefined;
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-purple-600 p-4">
+      <div className="max-w-3xl mx-auto">
+        <div className="bg-white rounded-xl shadow-2xl p-4 sm:p-6 mb-4">
+          <div className="flex flex-wrap justify-between items-center gap-3">
+            <h1 className="text-2xl sm:text-3xl font-bold text-purple-600">Bet You Can't!</h1>
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <span>⏱️</span>
+                <span className="font-bold text-lg">{formatTime(timeLeft)}</span>
+              </div>
+              <button
+                onClick={endGame}
+                className="px-3 py-1.5 bg-red-500 text-white text-sm rounded-lg hover:bg-red-600"
+              >
+                End Game
+              </button>
+            </div>
+          </div>
+          {renderJoinBar()}
+          {apiError && <p className="text-red-600 text-sm text-center mt-2">{apiError}</p>}
+        </div>
+
+        <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
+          {gs.players.map((player, index) => (
+            <div
+              key={player.id}
+              className={`flex-shrink-0 bg-white rounded-lg p-3 min-w-[110px] ${index === gs.currentPlayerIndex ? 'ring-4 ring-yellow-400' : ''} ${myPlayerId === index ? 'border-2 border-purple-500' : ''}`}
+            >
+              <div className="flex items-center gap-1 mb-1">
+                <span className="text-xs">👤</span>
+                <span className="font-semibold text-xs truncate">{player.name}</span>
+              </div>
+              <div className="text-lg font-bold text-green-600">€{player.money}</div>
+            </div>
+          ))}
+        </div>
+
+        {gs.phase === 'playing' && (
+          <div className="bg-white rounded-xl shadow-xl p-8 text-center">
+            <h2 className="text-2xl font-bold mb-4">
+              {iAmCurrent ? 'Your turn!' : `${currentPlayer.name}'s Turn`}
+            </h2>
+
+            {gs.diceValue && (
+              <div className="mb-6">
+                <div className="text-7xl mb-2">{diceFaces[gs.diceValue - 1]}</div>
+                <p className="text-xl">Rolled: {gs.diceValue}</p>
+              </div>
+            )}
+
+            <button
+              onClick={rollDice}
+              disabled={gs.diceValue !== null}
+              className="px-8 py-4 bg-purple-600 text-white text-xl font-bold rounded-lg hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition"
+            >
+              Roll Dice
+            </button>
+            {!iAmCurrent && (
+              <p className="text-sm text-gray-500 mt-4">Waiting on {currentPlayer.name} — anyone can roll for them if needed.</p>
+            )}
+          </div>
+        )}
+
+        {gs.phase === 'blindBet' && (
+          <div className="bg-white rounded-xl shadow-xl p-8">
+            <h2 className="text-2xl font-bold mb-4 text-center">🎲 Blind Bet!</h2>
+            <p className="text-center mb-4 text-lg">
+              {iAmCurrent ? 'Choose your challenge type:' : `${currentPlayer.name}, choose your challenge type:`}
+            </p>
+            <p className="text-center mb-6 text-gray-600">
+              Other players will bet BEFORE seeing what the challenge is!
+            </p>
+
+            <div className="flex gap-4 justify-center">
+              <button
+                onClick={() => selectBlindBetType('skill')}
+                className="px-8 py-4 bg-blue-600 text-white text-xl font-bold rounded-lg hover:bg-blue-700"
+              >
+                🏃 Skill Task
+              </button>
+              <button
+                onClick={() => selectBlindBetType('mental')}
+                className="px-8 py-4 bg-green-600 text-white text-xl font-bold rounded-lg hover:bg-green-700"
+              >
+                🧠 Mental Task
+              </button>
+            </div>
+          </div>
+        )}
+
+        {(gs.phase === 'betting' || gs.phase === 'blindBetting') && (
+          <div className="bg-white rounded-xl shadow-xl p-8">
+            {gs.phase === 'betting' && currentTask && (
+              <>
+                <h2 className="text-2xl font-bold mb-4 text-center">
+                  {currentTask.type === 'skill' ? '🏃 Skill Challenge' : '🧠 Mental Challenge'}
+                </h2>
+                <div className="bg-purple-50 p-6 rounded-lg mb-6">
+                  <p className="text-xl font-semibold text-center mb-2">{currentTask.text}</p>
+                  <p className="text-center text-gray-600">Time limit: {currentTask.time} seconds</p>
+                </div>
+                {currentTask.diagram && renderDiagram(currentTask.diagram)}
+              </>
+            )}
+
+            {gs.phase === 'blindBetting' && (
+              <>
+                <h2 className="text-2xl font-bold mb-4 text-center">🎲 Blind Betting!</h2>
+                <p className="text-center mb-2 text-lg">
+                  {currentPlayer.name} has chosen a{' '}
+                  <span className="font-bold text-purple-600">
+                    {gs.blindBetTaskType === 'skill' ? '🏃 Skill' : '🧠 Mental'}
+                  </span>{' '}
+                  challenge
+                </p>
+                <p className="text-center mb-6 text-red-600 font-semibold">⚠️ Place your bets WITHOUT knowing the task!</p>
+              </>
+            )}
+
+            {iAmCurrent ? (
+              <div className="bg-blue-50 p-4 rounded-lg mb-6 text-center">
+                <p className="font-semibold">Waiting on bets: {betsCount}/{betsNeeded}</p>
+              </div>
+            ) : myPlayerId === null ? null : myBet ? (
+              <div className="bg-green-50 border-2 border-green-400 p-4 rounded-lg mb-6 text-center">
+                <p className="font-semibold text-green-700">
+                  You bet €{myBet.amount} on {myBet.willSucceed ? 'SUCCESS ✓' : 'FAIL ✗'} — waiting for the others.
+                </p>
+              </div>
+            ) : (
+              <BetForm player={gs.players[myPlayerId]} onBet={placeBet} error={betError} />
+            )}
+
+            <div className="bg-gray-50 p-4 rounded-lg mb-6">
+              <h3 className="font-bold text-lg mb-2">Bets Placed ({betsCount}/{betsNeeded}):</h3>
+              {otherPlayers.map(player => {
+                const bet = (gs.bets || {})[player.id];
+                return (
+                  <p key={player.id} className="text-gray-700 text-sm">
+                    {player.name}: {bet ? `€${bet.amount} on ${bet.willSucceed ? '✓ SUCCESS' : '✗ FAIL'}` : 'thinking…'}
+                  </p>
+                );
+              })}
+            </div>
+
+            <button
+              onClick={gs.phase === 'betting' ? startChallenge : revealBlindTask}
+              disabled={betsCount < betsNeeded}
+              className="w-full py-3 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700 disabled:bg-gray-400"
+            >
+              {gs.phase === 'betting' ? 'All Bets Placed - Start Challenge!' : 'All Bets Placed - Reveal Challenge!'}
+            </button>
+          </div>
+        )}
+
+        {gs.phase === 'revealBlindTask' && currentTask && (
+          <div className="bg-white rounded-xl shadow-xl p-8">
+            <h2 className="text-2xl font-bold mb-4 text-center">🎉 Challenge Revealed!</h2>
+
+            <div className="bg-yellow-100 border-4 border-yellow-400 p-6 rounded-lg mb-6">
+              <p className="text-2xl font-bold text-center mb-2">{currentTask.text}</p>
+              <p className="text-center text-gray-700 text-lg">⏱️ Time limit: {currentTask.time} seconds</p>
+            </div>
+
+            {currentTask.diagram && renderDiagram(currentTask.diagram)}
+
+            <div className="bg-blue-50 p-4 rounded-lg mb-6">
+              <h3 className="font-bold text-lg mb-2">Bets Placed:</h3>
+              {otherPlayers.map(player => {
+                const bet = (gs.bets || {})[player.id];
+                return (
+                  <p key={player.id} className="text-gray-700">
+                    {player.name}: {bet ? `€${bet.amount} on ${bet.willSucceed ? '✓ SUCCESS' : '✗ FAIL'}` : '—'}
+                  </p>
+                );
+              })}
+            </div>
+
+            <button
+              onClick={startChallenge}
+              className="w-full py-4 bg-purple-600 text-white font-bold text-lg rounded-lg hover:bg-purple-700"
+            >
+              Start Challenge! 🎯
+            </button>
+          </div>
+        )}
+
+        {gs.phase === 'performing' && currentTask && (
+          <div className="bg-white rounded-xl shadow-xl p-8">
+            <h2 className="text-2xl font-bold mb-4 text-center">
+              {iAmCurrent ? "You're performing!" : `${currentPlayer.name} is performing!`}
+            </h2>
+
+            <div className="bg-yellow-50 p-6 rounded-lg mb-6">
+              <p className="text-xl font-semibold text-center mb-2">{currentTask.text}</p>
+              <p className="text-center text-gray-600">
+                {challengeTimeLeft !== null ? `${challengeTimeLeft}s left` : `Time limit: ${currentTask.time} seconds`}
+              </p>
+            </div>
+
+            {!gs.showResults && (
+              <>
+                <div className="text-center mb-6">
+                  <p className="text-lg mb-2">Did {currentPlayer.name} succeed?</p>
+                  <p className="text-xs text-gray-400">Anyone can judge — tap the result together.</p>
+                </div>
+
+                <div className="flex gap-4 justify-center">
+                  <button
+                    onClick={() => recordResult(true)}
+                    className="px-12 py-4 bg-green-500 text-white text-xl font-bold rounded-lg hover:bg-green-600"
+                  >
+                    ✓ SUCCESS
+                  </button>
+                  <button
+                    onClick={() => recordResult(false)}
+                    className="px-12 py-4 bg-red-500 text-white text-xl font-bold rounded-lg hover:bg-red-600"
+                  >
+                    ✗ FAILED
+                  </button>
+                </div>
+              </>
+            )}
+
+            {gs.showResults && (
+              <div className="mt-2 p-4 bg-blue-50 rounded-lg">
+                <h3 className="font-bold text-lg mb-2">Results:</h3>
+                <p className="text-xl mb-2">Task: {gs.taskSuccess ? '✓ Completed!' : '✗ Failed'}</p>
+                {Object.entries(gs.bets || {}).map(([playerId, bet]) => {
+                  const player = gs.players[parseInt(playerId)];
+                  const won = bet.willSucceed === gs.taskSuccess;
+                  return (
+                    <p key={playerId} className={won ? 'text-green-600' : 'text-red-600'}>
+                      {player.name}: {won ? `+€${bet.amount}` : `-€${bet.amount}`}
+                    </p>
+                  );
+                })}
+                <button
+                  onClick={nextTurn}
+                  className="w-full mt-4 py-3 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700"
+                >
+                  Continue ▶
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<BetYouCantGame />);
+</script>
+</body>
+</html>
