@@ -1479,17 +1479,22 @@ const BetYouCantGame = () => {
               <div className="flex gap-4 justify-center">
                 <button
                   onClick={() => selectBlindBetType('skill')}
-                  className="px-8 py-4 bg-blue-600 text-white text-xl font-bold rounded-lg hover:bg-blue-700"
+                  disabled={!iAmCurrent}
+                  className="px-8 py-4 bg-blue-600 text-white text-xl font-bold rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
                 >
                   {t(lang, 'skillTaskBtn')}
                 </button>
                 <button
                   onClick={() => selectBlindBetType('mental')}
-                  className="px-8 py-4 bg-green-600 text-white text-xl font-bold rounded-lg hover:bg-green-700"
+                  disabled={!iAmCurrent}
+                  className="px-8 py-4 bg-green-600 text-white text-xl font-bold rounded-lg hover:bg-green-700 disabled:bg-gray-400"
                 >
                   {t(lang, 'mentalTaskBtn')}
                 </button>
               </div>
+              {!iAmCurrent && (
+                <p className="text-xs text-gray-500 text-center mt-3">{t(lang, 'waitingContinue', currentPlayer.name)}</p>
+              )}
             </div>
           )}
 

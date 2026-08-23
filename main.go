@@ -404,6 +404,9 @@ func handleBlindType(w http.ResponseWriter, r *http.Request, id string) {
 	}
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	if !requireCurrentPlayer(w, r, g.state) {
+		return
+	}
 	g.state.BlindBetTaskType = &req.Type
 	g.state.Phase = "blindBetting"
 	g.state.Bets = map[int]Bet{}
