@@ -1060,33 +1060,54 @@ const BetYouCantGame = () => {
             <div className="space-y-6">
               <div>
                 <label className="block text-gray-700 font-semibold mb-2">Number of Players (3-8)</label>
-                <input
-                  type="number"
-                  min="3"
-                  max="8"
-                  value={localSetup.numPlayers}
-                  onChange={(e) => {
-                    const n = parseInt(e.target.value) || 3;
-                    setLocalSetup(prev => ({
-                      ...prev,
-                      numPlayers: n,
-                      playerNames: Array.from({ length: n }, (_, i) => prev.playerNames[i] || '')
-                    }));
-                  }}
-                  className="w-full px-4 py-2 border-2 border-purple-300 rounded-lg focus:border-purple-500 outline-none"
-                />
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setLocalSetup(prev => {
+                      const n = Math.max(3, prev.numPlayers - 1);
+                      return { ...prev, numPlayers: n, playerNames: Array.from({ length: n }, (_, i) => prev.playerNames[i] || '') };
+                    })}
+                    disabled={localSetup.numPlayers <= 3}
+                    className="w-12 h-12 shrink-0 flex items-center justify-center text-2xl font-bold bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 active:bg-purple-300 disabled:opacity-40 disabled:hover:bg-purple-100"
+                  >
+                    −
+                  </button>
+                  <span className="flex-1 text-center text-2xl font-bold text-gray-800">{localSetup.numPlayers}</span>
+                  <button
+                    type="button"
+                    onClick={() => setLocalSetup(prev => {
+                      const n = Math.min(8, prev.numPlayers + 1);
+                      return { ...prev, numPlayers: n, playerNames: Array.from({ length: n }, (_, i) => prev.playerNames[i] || '') };
+                    })}
+                    disabled={localSetup.numPlayers >= 8}
+                    className="w-12 h-12 shrink-0 flex items-center justify-center text-2xl font-bold bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 active:bg-purple-300 disabled:opacity-40 disabled:hover:bg-purple-100"
+                  >
+                    +
+                  </button>
+                </div>
               </div>
 
               <div>
                 <label className="block text-gray-700 font-semibold mb-2">Game Duration (minutes)</label>
-                <input
-                  type="number"
-                  min="10"
-                  max="60"
-                  value={localSetup.gameTime}
-                  onChange={(e) => setLocalSetup(prev => ({ ...prev, gameTime: parseInt(e.target.value) || 30 }))}
-                  className="w-full px-4 py-2 border-2 border-purple-300 rounded-lg focus:border-purple-500 outline-none"
-                />
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setLocalSetup(prev => ({ ...prev, gameTime: Math.max(10, prev.gameTime - 5) }))}
+                    disabled={localSetup.gameTime <= 10}
+                    className="w-12 h-12 shrink-0 flex items-center justify-center text-2xl font-bold bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 active:bg-purple-300 disabled:opacity-40 disabled:hover:bg-purple-100"
+                  >
+                    −
+                  </button>
+                  <span className="flex-1 text-center text-2xl font-bold text-gray-800">{localSetup.gameTime}</span>
+                  <button
+                    type="button"
+                    onClick={() => setLocalSetup(prev => ({ ...prev, gameTime: Math.min(60, prev.gameTime + 5) }))}
+                    disabled={localSetup.gameTime >= 60}
+                    className="w-12 h-12 shrink-0 flex items-center justify-center text-2xl font-bold bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 active:bg-purple-300 disabled:opacity-40 disabled:hover:bg-purple-100"
+                  >
+                    +
+                  </button>
+                </div>
               </div>
 
               <button
