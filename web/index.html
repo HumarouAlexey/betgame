@@ -557,12 +557,62 @@ const BetYouCantGame = () => {
     return () => clearInterval(tickInterval);
   }, []);
 
+  // Web Audio beep — no external audio file needed, keeps the app self-contained.
+  const audioCtxRef = React.useRef(null);
+  const getAudioCtx = () => {
+    try {
+      if (!audioCtxRef.current) {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) return null;
+        audioCtxRef.current = new Ctx();
+      }
+      if (audioCtxRef.current.state === 'suspended') {
+        audioCtxRef.current.resume().catch(() => {});
+      }
+      return audioCtxRef.current;
+    } catch (e) {
+      return null;
+    }
+  };
+  const playTimeUpSound = () => {
+    const ctx = getAudioCtx();
+    if (!ctx) return;
+    try {
+      const startTime = ctx.currentTime;
+      [880, 1108.73, 1318.51].forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const noteStart = startTime + i * 0.15;
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0, noteStart);
+        gain.gain.linearRampToValueAtTime(0.3, noteStart + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, noteStart + 0.35);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(noteStart);
+        osc.stop(noteStart + 0.4);
+      });
+    } catch (e) {}
+  };
+
   const endGameTriggeredRef = React.useRef(false);
   useEffect(() => {
     if (!gs || gs.phase === 'gameOver' || gs.phase === 'lobby' || !gs.gameEndsAt) return;
     if (now >= gs.gameEndsAt && !endGameTriggeredRef.current) {
       endGameTriggeredRef.current = true;
+      playTimeUpSound();
       endGame();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [now, gs]);
+
+  const performAlertedRef = React.useRef(null);
+  useEffect(() => {
+    if (!gs || gs.phase !== 'performing' || !gs.performEndsAt) return;
+    if (now >= gs.performEndsAt && performAlertedRef.current !== gs.performEndsAt) {
+      performAlertedRef.current = gs.performEndsAt;
+      playTimeUpSound();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [now, gs]);
