@@ -19,7 +19,213 @@ const { useState, useEffect } = React;
 
 const MIN_BET = 5;
 
-const BetForm = ({ player, onBet, error }) => {
+// ---- i18n ----
+const STRINGS = {
+  en: {
+    title: "Bet You Can't!",
+    betFormPrompt: (name, money) => `${name}, place your bet (€${money} available):`,
+    amountPlaceholder: 'Amount',
+    yes: 'YES',
+    no: 'NO',
+    minMaxBet: (min, max) => `Min bet: €${min} · Max bet: €${max}`,
+    notEnoughForMinBet: (min) => `Not enough money to place the €${min} minimum bet.`,
+    connectionError: "Can't reach the game server. Check it's still running and you're on the same network.",
+    somethingWrong: 'Something went wrong',
+    networkError: 'network error',
+    couldNotCreateGame: 'Could not create the game',
+    cantReachIsItRunning: "Can't reach the game server. Is it running?",
+    cantReachTitle: "Can't reach the game",
+    retry: 'Retry',
+    loadingGame: 'Loading game…',
+    numPlayersLabel: 'Number of Players (3-8)',
+    gameDurationLabel: 'Game Duration (minutes)',
+    nextSetNames: 'Next: Set Player Names',
+    howToPlayTitle: 'How to Play:',
+    howToPlay1: 'Roll dice and move around the board',
+    howToPlay2: 'Complete skill or mental challenges',
+    howToPlay3: 'Bet on whether others will succeed',
+    howToPlay4: 'Collect the most money to win!',
+    back: '← Back',
+    enterPlayerNames: 'Enter Player Names',
+    playerLabel: (n) => `Player ${n}`,
+    createGame: 'Create Game',
+    leaveBlankDefault: 'Leave blank to use default names',
+    lobbyIntro: "Each player scans their own QR code (or taps their name below) on their own phone. Only the host can start the game once everyone's in.",
+    youAreIn: (name) => `You're in as ${name} ✅`,
+    tapYourName: 'Playing on this phone? Tap your name:',
+    qrAlt: (name) => `QR code for ${name}`,
+    copied: 'Copied ✓',
+    copyLink: 'Copy Link',
+    startGame: 'Start Game ▶',
+    waitingHostStart: 'Waiting for the host to start the game…',
+    sameNetworkNote: "Players need to be on the same WiFi network as this server (or reach its address over the internet).",
+    gameOverTitle: 'Game Over!',
+    winnerLabel: (name) => `Winner: ${name}`,
+    playAgain: 'Play Again',
+    endGame: 'End Game',
+    endGameTooltip: (name) => `Only ${name} (current player) can end the game`,
+    current: '(current)',
+    yourTurn: 'Your turn!',
+    turnOf: (name) => `${name}'s Turn`,
+    rolled: (v) => `Rolled: ${v}`,
+    rollDice: 'Roll Dice',
+    waitingRoll: (name) => `Waiting on ${name} to roll…`,
+    blindBetTitle: "🎲 Blind Bet!",
+    chooseChallengeType: 'Choose your challenge type:',
+    chooseChallengeTypeOther: (name) => `${name}, choose your challenge type:`,
+    blindBetWarning: 'Other players will bet BEFORE seeing what the challenge is!',
+    skillTaskBtn: '🏃 Skill Task',
+    mentalTaskBtn: '🧠 Mental Task',
+    skillChallenge: '🏃 Skill Challenge',
+    mentalChallenge: '🧠 Mental Challenge',
+    timeLimit: (t) => `Time limit: ${t} seconds`,
+    blindBettingTitle: '🎲 Blind Betting!',
+    hasChosen: 'has chosen a',
+    skillChallengeLower: 'skill challenge 🏃',
+    mentalChallengeLower: 'mental challenge 🧠',
+    blindBettingWarning: '⚠️ Place your bets WITHOUT knowing the task!',
+    waitingOnBets: (count, needed) => `Waiting on bets: ${count}/${needed}`,
+    youBet: (amount, outcome) => `You bet €${amount} on ${outcome} — waiting for the others.`,
+    success: 'SUCCESS ✓',
+    fail: 'FAIL ✗',
+    betsPlacedCount: (count, needed) => `Bets Placed (${count}/${needed}):`,
+    betsSecretNote: 'Bets stay secret until the challenge is judged.',
+    betPlaced: '✓ bet placed',
+    thinking: 'thinking…',
+    allBetsStartChallenge: 'All Bets Placed - Start Challenge!',
+    allBetsRevealChallenge: 'All Bets Placed - Reveal Challenge!',
+    waitingContinue: (name) => `Waiting for ${name} to continue…`,
+    challengeRevealed: '🎉 Challenge Revealed!',
+    betsPlacedTitle: 'Bets Placed:',
+    startChallengeBtn: 'Start Challenge! 🎯',
+    youPerforming: "You're performing!",
+    otherPerforming: (name) => `${name} is performing!`,
+    secondsLeft: (s) => `${s}s left`,
+    didSucceed: (name) => `Did ${name} succeed?`,
+    anyoneCanJudge: 'Anyone can judge — tap the result together.',
+    successBtn: '✓ SUCCESS',
+    failedBtn: '✗ FAILED',
+    resultsTitle: 'Results:',
+    taskCompleted: '✓ Completed!',
+    taskFailed: '✗ Failed',
+    taskLabel: (outcome) => `Task: ${outcome}`,
+    continueBtn: 'Continue ▶',
+  },
+  ru: {
+    title: 'Спорим, не сможешь!',
+    betFormPrompt: (name, money) => `${name}, сделай ставку (доступно €${money}):`,
+    amountPlaceholder: 'Сумма',
+    yes: 'ДА',
+    no: 'НЕТ',
+    minMaxBet: (min, max) => `Мин. ставка: €${min} · Макс. ставка: €${max}`,
+    notEnoughForMinBet: (min) => `Недостаточно денег для минимальной ставки €${min}.`,
+    connectionError: 'Не удаётся подключиться к серверу игры. Убедитесь, что он запущен и вы в одной сети.',
+    somethingWrong: 'Что-то пошло не так',
+    networkError: 'ошибка сети',
+    couldNotCreateGame: 'Не удалось создать игру',
+    cantReachIsItRunning: 'Не удаётся подключиться к серверу игры. Он запущен?',
+    cantReachTitle: 'Не удаётся подключиться к игре',
+    retry: 'Повторить',
+    loadingGame: 'Загрузка игры…',
+    numPlayersLabel: 'Количество игроков (3–8)',
+    gameDurationLabel: 'Длительность игры (минут)',
+    nextSetNames: 'Далее: указать имена игроков',
+    howToPlayTitle: 'Как играть:',
+    howToPlay1: 'Бросай кубик и двигайся по полю',
+    howToPlay2: 'Выполняй задания на ловкость или смекалку',
+    howToPlay3: 'Делай ставки на успех других игроков',
+    howToPlay4: 'Собери больше всех денег и победи!',
+    back: '← Назад',
+    enterPlayerNames: 'Введите имена игроков',
+    playerLabel: (n) => `Игрок ${n}`,
+    createGame: 'Создать игру',
+    leaveBlankDefault: 'Оставьте пустым, чтобы использовать имена по умолчанию',
+    lobbyIntro: 'Каждый игрок сканирует свой QR-код (или нажимает на своё имя ниже) на своём телефоне. Начать игру, когда все в сборе, может только хост.',
+    youAreIn: (name) => `Вы вошли как ${name} ✅`,
+    tapYourName: 'Играете с этого телефона? Нажмите на своё имя:',
+    qrAlt: (name) => `QR-код для ${name}`,
+    copied: 'Скопировано ✓',
+    copyLink: 'Скопировать ссылку',
+    startGame: 'Начать игру ▶',
+    waitingHostStart: 'Ожидание, пока хост начнёт игру…',
+    sameNetworkNote: 'Игроки должны быть в той же Wi-Fi сети, что и сервер (или иметь доступ к его адресу через интернет).',
+    gameOverTitle: 'Игра окончена!',
+    winnerLabel: (name) => `Победитель: ${name}`,
+    playAgain: 'Играть снова',
+    endGame: 'Завершить игру',
+    endGameTooltip: (name) => `Завершить игру может только ${name} (текущий игрок)`,
+    current: '(ходит)',
+    yourTurn: 'Ваш ход!',
+    turnOf: (name) => `Ход игрока ${name}`,
+    rolled: (v) => `Выпало: ${v}`,
+    rollDice: 'Бросить кубик',
+    waitingRoll: (name) => `Ожидание, пока ${name} бросит кубик…`,
+    blindBetTitle: '🎲 Слепая ставка!',
+    chooseChallengeType: 'Выберите тип задания:',
+    chooseChallengeTypeOther: (name) => `${name}, выберите тип задания:`,
+    blindBetWarning: 'Остальные игроки сделают ставки ДО того, как узнают задание!',
+    skillTaskBtn: '🏃 На ловкость',
+    mentalTaskBtn: '🧠 На смекалку',
+    skillChallenge: '🏃 Испытание на ловкость',
+    mentalChallenge: '🧠 Испытание на смекалку',
+    timeLimit: (t) => `Лимит времени: ${t} секунд`,
+    blindBettingTitle: '🎲 Слепые ставки!',
+    hasChosen: 'выбрал',
+    skillChallengeLower: 'испытание на ловкость 🏃',
+    mentalChallengeLower: 'испытание на смекалку 🧠',
+    blindBettingWarning: '⚠️ Сделайте ставки, НЕ зная задания!',
+    waitingOnBets: (count, needed) => `Ожидаем ставки: ${count}/${needed}`,
+    youBet: (amount, outcome) => `Вы поставили €${amount} на ${outcome} — ждём остальных.`,
+    success: 'УСПЕХ ✓',
+    fail: 'ПРОВАЛ ✗',
+    betsPlacedCount: (count, needed) => `Ставки сделаны (${count}/${needed}):`,
+    betsSecretNote: 'Ставки останутся в секрете до объявления результата.',
+    betPlaced: '✓ ставка сделана',
+    thinking: 'думает…',
+    allBetsStartChallenge: 'Все поставили — начать испытание!',
+    allBetsRevealChallenge: 'Все поставили — раскрыть задание!',
+    waitingContinue: (name) => `Ожидание, пока ${name} продолжит…`,
+    challengeRevealed: '🎉 Задание раскрыто!',
+    betsPlacedTitle: 'Ставки сделаны:',
+    startChallengeBtn: 'Начать испытание! 🎯',
+    youPerforming: 'Ты выполняешь испытание!',
+    otherPerforming: (name) => `${name} выполняет испытание!`,
+    secondsLeft: (s) => `осталось ${s} с`,
+    didSucceed: (name) => `Справился ли ${name}?`,
+    anyoneCanJudge: 'Судить может любой — вместе нажмите на результат.',
+    successBtn: '✓ УСПЕХ',
+    failedBtn: '✗ ПРОВАЛ',
+    resultsTitle: 'Результаты:',
+    taskCompleted: '✓ Выполнено!',
+    taskFailed: '✗ Провалено',
+    taskLabel: (outcome) => `Задание: ${outcome}`,
+    continueBtn: 'Продолжить ▶',
+  },
+};
+
+const t = (lang, key, ...args) => {
+  const entry = (STRINGS[lang] || STRINGS.en)[key];
+  return typeof entry === 'function' ? entry(...args) : entry;
+};
+
+const LanguageSwitcher = ({ lang, setLang }) => (
+  <div className="fixed top-2 right-2 z-50 flex bg-white/90 backdrop-blur rounded-full shadow-lg p-1 gap-1 text-xs font-bold">
+    <button
+      onClick={() => setLang('en')}
+      className={`px-2.5 py-1 rounded-full transition ${lang === 'en' ? 'bg-purple-600 text-white' : 'text-gray-500 hover:bg-gray-100'}`}
+    >
+      EN
+    </button>
+    <button
+      onClick={() => setLang('ru')}
+      className={`px-2.5 py-1 rounded-full transition ${lang === 'ru' ? 'bg-purple-600 text-white' : 'text-gray-500 hover:bg-gray-100'}`}
+    >
+      RU
+    </button>
+  </div>
+);
+
+const BetForm = ({ player, onBet, error, lang }) => {
   const [amount, setAmount] = useState('');
   if (!player) return null;
   const maxBet = Math.floor(player.money / 2);
@@ -28,13 +234,13 @@ const BetForm = ({ player, onBet, error }) => {
   const validAmount = canBet && parsed >= MIN_BET && parsed <= maxBet;
   return (
     <div className="bg-gray-50 p-4 rounded-lg mb-6">
-      <p className="font-semibold mb-3">{player.name}, сделай ставку (доступно €{player.money}):</p>
+      <p className="font-semibold mb-3">{t(lang, 'betFormPrompt', player.name, player.money)}</p>
       {canBet ? (
         <>
           <div className="flex gap-2">
             <input
               type="number"
-              placeholder="Сумма"
+              placeholder={t(lang, 'amountPlaceholder')}
               min={MIN_BET}
               max={maxBet}
               value={amount}
@@ -46,20 +252,20 @@ const BetForm = ({ player, onBet, error }) => {
               disabled={!validAmount}
               className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed"
             >
-              ДА
+              {t(lang, 'yes')}
             </button>
             <button
               onClick={() => onBet(false, parsed)}
               disabled={!validAmount}
               className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed"
             >
-              НЕТ
+              {t(lang, 'no')}
             </button>
           </div>
-          <p className="text-xs text-gray-500 mt-1">Мин. ставка: €{MIN_BET} · Макс. ставка: €{maxBet}</p>
+          <p className="text-xs text-gray-500 mt-1">{t(lang, 'minMaxBet', MIN_BET, maxBet)}</p>
         </>
       ) : (
-        <p className="text-sm text-red-600">Недостаточно денег для минимальной ставки €{MIN_BET}.</p>
+        <p className="text-sm text-red-600">{t(lang, 'notEnoughForMinBet', MIN_BET)}</p>
       )}
       {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
     </div>
@@ -68,284 +274,162 @@ const BetForm = ({ player, onBet, error }) => {
 
 const BetYouCantGame = () => {
   const skillTasks = [
-    {
-      text: "Сможет ли игрок сложить лист А4 вчетверо, используя только одну руку?",
-      time: 15,
-      diagram: "fold"
-    },
-    {
-      text: "Сможет ли игрок сделать подъём корпуса, держа ноги прямыми и не теряя равновесия? 2 успешные попытки из 3",
-      time: 30,
-      diagram: "situp"
-    },
-    {
-      text: "Сможет ли игрок поймать брошенную ручку бутылкой 0,5 литра? Нужно поймать ручку в бутылку. Сделать это 2 раза.",
-      time: 30,
-      diagram: "bottle"
-    },
-    {
-      text: "Сможет ли игрок подбросить пластиковую бутылку так, чтобы она приземлилась вертикально? 3 попытки — нужно попасть 2 раза из 3.",
-      time: 30,
-      diagram: "bottleflip"
-    },
-    {
-      text: "Сможет ли игрок прыгать через скакалку 15 секунд без запинки? Колени нужно поднимать высоко, ноги тоже можно поднимать.",
-      time: 15,
-      diagram: "jumprope"
-    },
-    {
-      text: "Сможет ли игрок поймать лежащий ластик, подбросив его вверх и поймав после удара об пол? 3 попытки — ластик должен оказаться в руке 2 раза.",
-      time: 30,
-      diagram: "eraser"
-    },
-    {
-      text: "Сможет ли игрок бросить мяч от пола к потолку так, чтобы он отскочил от пола и ударился о потолок? 3 попытки, нужно попасть хотя бы раз.",
-      time: 30,
-      diagram: "throwceiling"
-    },
-    {
-      text: "Сможет ли игрок поставить 5 кубиков друг на друга, чтобы нижний лежал прямо на полу? 3 попытки — нужно успеть 2 раза.",
-      time: 30,
-      diagram: "dicestack"
-    },
-    {
-      text: "Сможет ли игрок правильно сделать 5 отжиманий? В нижней точке нужно останавливаться, не касаясь пола. Каждая остановка должна длиться не менее 2 секунд.",
-      time: 30,
-      diagram: "pushup"
-    },
-    {
-      text: "Сможет ли игрок бросить стакан с водой на пол с высоты около 3 метров так, чтобы стакан не разбился при приземлении?",
-      time: 30,
-      diagram: "glassthrow"
-    },
-    {
-      text: "Сможет ли игрок встать в стойку «стол» без помощи рук? (3 попытки)",
-      time: 30
-    },
-    {
-      text: "Сможет ли игрок 15 секунд приседать и подпрыгивать так, чтобы ногами коснуться экрана телевизора, на котором идёт передача по одному из каналов?",
-      time: 15
-    },
-    {
-      text: "Сможет ли игрок дать один ответ на один вопрос так, чтобы все услышали именно то, что игрок знает или хочет рассказать о игре на что-то? (15 секунд)",
-      time: 15
-    },
-    {
-      text: "Сможет ли игрок удержать кубик на стаканчике для игральных костей так, чтобы кости подпрыгивали и задевали кубик? Сначала 3 попытки, но дистанцию можно увеличить до 1 метра.",
-      time: 30
-    },
-    {
-      text: "Сможет ли игрок встать на одну руку из положения стоя, а затем бросить что-то, используя стул, не падая? (нужно повторить 3 раза)",
-      time: 30
-    },
-    {
-      text: "Сможет ли игрок бросить игральную кость с расстояния 1 метр так, чтобы она встала на стол? (3 попытки, кубик должен приземлиться стоя на столе)",
-      time: 30
-    },
-    {
-      text: "Сможет ли игрок написать SMS за 30 секунд?",
-      time: 30
-    },
-    {
-      text: "Сможет ли игрок закинуть ноги на стул так, чтобы тот отъехал от 0 до 2 метров, не упав? (3 попытки)",
-      time: 30
-    },
-    {
-      text: "Сможет ли игрок за 30 секунд назвать 6-значные числа словами? Нужно дать 4 правильных ответа за 30 секунд.",
-      time: 30
-    },
-    {
-      text: "Сможет ли игрок наполнить бутылку 0,5 литра водой с расстояния 1 метр, правильно её держа? (бутылка должна стоять на столе, до 5 попыток)",
-      time: 30
-    },
-    {
-      text: "Сможет ли игрок 5 раз перепрыгнуть слева направо, опираясь руками на пол и поднимая ноги, останавливаясь на месте? После каждой остановки нужно приземляться уже с другой стороны.",
-      time: 30
-    },
-    {
-      text: "Сможет ли игрок бросить ручку с пола так, чтобы она воткнулась в потолок, а затем поймать её обратно? (3 попытки — ручка должна оказаться в руке 2 раза из 4)",
-      time: 30
-    },
-    {
-      text: "Сможет ли игрок лечь и подряд 3 раза подбросить колени? (3 попытки — 1 успешная подряд)",
-      time: 30
-    },
-    {
-      text: "Сможет ли игрок 10 раз написать «Ча-ча-ча» в телефоне? (можно писать по-английски 'Cha Cha Cha...')",
-      time: 15
-    },
-    { text: "Удержать маркер на лбу 5 секунд", time: 30 },
-    { text: "Отбить мяч и поймать его 5 раз подряд одной рукой", time: 30 },
-    { text: "Уложить 5 предметов друг на друга на мотоциклетном шлеме", time: 60 },
-    { text: "Простоять на одной ноге 30 секунд", time: 30 },
-    { text: "Сделать 10 прыжков «звёздочка», не отводя взгляд от партнёра", time: 30 },
-    { text: "Покружиться 10 раз и пройти по прямой линии", time: 30 },
-    { text: "Продержаться в планке 20 секунд", time: 30 },
-    { text: "Подбросить и поймать мяч за спиной", time: 30 },
-    { text: "Удержать книгу на голове и пройти 5 метров", time: 30 },
-    { text: "Идеально станцевать «Макарену»", time: 60 },
-    {
-      text: "Нарисуй на полу галочку (✓). Брось мяч так, чтобы он отскочил от пола, ударился о стену и вернулся в руку",
-      time: 30,
-      diagram: "bounce"
-    },
-    { text: "Сможет ли игрок сделать 10 приседаний, держа метлу горизонтально над головой? Нужно сохранять равновесие всё время.", time: 30 },
-    { text: "Сможет ли игрок жонглировать 2 мячами одной рукой 10 секунд, не уронив их?", time: 30 },
-    { text: "Сможет ли игрок пройти спиной вперёд по прямой 10 метров с закрытыми глазами? Другой игрок может подсказывать только голосом.", time: 45 },
-    { text: "Сможет ли игрок покрутить ручку на пальце 5 секунд, как баскетбольный мяч?", time: 30 },
-    { text: "Сможет ли игрок сделать 5 берпи за 30 секунд?", time: 30 },
-    { text: "Сможет ли игрок 20 раз подряд отбить мяч для настольного тенниса ракеткой, не уронив его?", time: 30 },
-    { text: "Сможет ли игрок построить карточный домик минимум в 3 этажа? (3 попытки)", time: 60 },
-    { text: "Сможет ли игрок продержаться в положении «стул у стены» 30 секунд?", time: 30 },
-    { text: "Сможет ли игрок подбросить и поймать 3 предмета подряд, не уронив ни одного?", time: 30 },
-    { text: "Сможет ли игрок станцевать «волну», проползая 2 метра?", time: 30 },
-    { text: "Сможет ли игрок простоять на одной ноге, касаясь носа противоположной рукой, 15 секунд? На середине нужно сменить ногу.", time: 30 },
-    { text: "Сможет ли игрок пройти лунной походкой 3 метра?", time: 30 },
-    { text: "Сможет ли игрок покружиться 5 раз, а затем сразу сложить 3 монеты друг на друга? (2 попытки)", time: 30 },
-    { text: "Сможет ли игрок 10 раз коснуться носков ног, не сгибая колени?", time: 30 },
-    { text: "Сможет ли игрок удержать ложку на носу 10 секунд?", time: 30 },
-    { text: "Сможет ли игрок пройти «крабом» через комнату и обратно (минимум 5 метров в каждую сторону)?", time: 45 },
-    { text: "Сможет ли игрок хлопнуть в ладоши 100 раз за 30 секунд?", time: 30 },
-    { text: "Сможет ли игрок сделать 5 идеальных выпадов на каждую ногу (10 всего), держа руки за головой?", time: 45 },
-    { text: "Сможет ли игрок прокатить карандаш от тыльной стороны ладони до кончиков пальцев, не уронив его?", time: 30 },
-    { text: "Сможет ли игрок 10 раз прокинуть мяч между ног по траектории восьмёрки?", time: 30 },
-    { text: "Сможет ли игрок простоять на подушке на одной ноге 20 секунд?", time: 30 },
-    { text: "Сможет ли игрок написать своё имя в воздухе ногой, стоя на другой ноге?", time: 30 },
-    { text: "Сможет ли игрок сделать 10 высоких подъёмов колен на месте, каждый раз хлопая над головой?", time: 30 },
-    { text: "Сможет ли игрок поднять 10 мелких предметов с пола только пальцами ног и сложить их в контейнер?", time: 45 },
-    { text: "Сможет ли игрок продержаться в позе «дерево» из йоги по 20 секунд на каждой ноге?", time: 45 },
-    {
-      text: "Сможет ли игрок закинуть рюкзак себе на колено? Рюкзак должен приземлиться и остаться на колене. 3 попытки — достаточно одного успеха.",
-      time: 30
-    },
-    {
-      text: "Сможет ли игрок поднять стул, подбросить его и поймать, прежде чем он коснётся пола? Нужно успешно повторить это 3 раза. 3 попытки.",
-      time: 30
-    },
-    {
-      text: "Сможет ли игрок лечь и, вытянув руки, дотянуться до двери и схватиться за неё? 3 попытки — нужно дотянуться до двери, вытянувшись из положения лёжа.",
-      time: 30
-    },
-    {
-      text: "Сможет ли игрок удержать подушку «в полёте»? Нужно непрерывно подбрасывать подушку, перепрыгивая с одной стороны на другую, удерживая её под курткой. 5 попыток за 30 секунд, не уронив её.",
-      time: 30
-    },
-    {
-      text: "Сможет ли игрок вращать глазами назад в течение 30 секунд?",
-      time: 30
-    },
-    {
-      text: "Сможет ли игрок пройти вперёд на полностью прямых ногах необычной походкой 20 шагов?",
-      time: 30
-    },
-    {
-      text: "Сможет ли игрок 5 раз поднять с пола предмет (например, гриб) пальцами ног, схватить его и поднять до уровня руки? Нужно 2 успеха из 4 попыток.",
-      time: 30
-    },
-    {
-      text: "Сможет ли игрок сесть и подбросить подушку так, чтобы удержать позу, в которой ноги подняты к потолку, а тело сидит под углом? 3 попытки — хотя бы раз без потери равновесия.",
-      time: 30
-    },
-    {
-      text: "Сможет ли игрок продержаться лёжа 30 секунд, приподняв голову и ноги и показывая знак «класс» на полу? Тело должно оставаться примерно в одном положении всё это время.",
-      time: 30
-    },
-    {
-      text: "Сможет ли игрок, лёжа с прямыми ногами, толкать запястья или локти в противоположные стороны? Задание: толчок назад от уровня плеч. 2 успеха из 4 попыток.",
-      time: 30
-    },
-    {
-      text: "Сможет ли игрок за 15 секунд удержать и хлопнуть монетами между ладонями? 3 попытки.",
-      time: 30
-    },
-    {
-      text: "Сможет ли игрок бросить подушку в цель и поймать её? Бросок с расстояния 3 метра. 2 попытки.",
-      time: 30
-    }
+    { en: "Can the player fold an A4 sheet 4 times using only one hand?", ru: "Сможет ли игрок сложить лист А4 вчетверо, используя только одну руку?", time: 15, diagram: "fold" },
+    { en: "Can the player do a sit-up while keeping their legs straight and not losing balance? 2 successful tries out of 3", ru: "Сможет ли игрок сделать подъём корпуса, держа ноги прямыми и не теряя равновесия? 2 успешные попытки из 3", time: 30, diagram: "situp" },
+    { en: "Can the player catch a thrown pen with a half-liter bottle? Try to catch the pen in the bottle. Do this 2 times.", ru: "Сможет ли игрок поймать брошенную ручку бутылкой 0,5 литра? Нужно поймать ручку в бутылку. Сделать это 2 раза.", time: 30, diagram: "bottle" },
+    { en: "Can the player flip a plastic bottle so it lands upright? Try 3 times — you must succeed 2 out of 3 times.", ru: "Сможет ли игрок подбросить пластиковую бутылку так, чтобы она приземлилась вертикально? 3 попытки — нужно попасть 2 раза из 3.", time: 30, diagram: "bottleflip" },
+    { en: "Can the player jump rope for 15 seconds without tripping? Knees must be raised high — legs can be lifted too.", ru: "Сможет ли игрок прыгать через скакалку 15 секунд без запинки? Колени нужно поднимать высоко, ноги тоже можно поднимать.", time: 15, diagram: "jumprope" },
+    { en: "Can the player catch a flat-lying eraser by throwing it up and catching it after it bounces off the floor? 3 tries — you must catch it in your hand 2 times.", ru: "Сможет ли игрок поймать лежащий ластик, подбросив его вверх и поймав после удара об пол? 3 попытки — ластик должен оказаться в руке 2 раза.", time: 30, diagram: "eraser" },
+    { en: "Can the player throw a ball from the floor so it bounces off the floor and hits the ceiling? 3 tries to succeed at least once.", ru: "Сможет ли игрок бросить мяч от пола к потолку так, чтобы он отскочил от пола и ударился о потолок? 3 попытки, нужно попасть хотя бы раз.", time: 30, diagram: "throwceiling" },
+    { en: "Can the player stack 5 dice on top of each other, with the bottom one resting directly on the floor? 3 tries — must succeed 2 times.", ru: "Сможет ли игрок поставить 5 кубиков друг на друга, чтобы нижний лежал прямо на полу? 3 попытки — нужно успеть 2 раза.", time: 30, diagram: "dicestack" },
+    { en: "Can the player do 5 push-ups correctly? At the bottom you must pause without touching the floor. Each pause must last at least 2 seconds.", ru: "Сможет ли игрок правильно сделать 5 отжиманий? В нижней точке нужно останавливаться, не касаясь пола. Каждая остановка должна длиться не менее 2 секунд.", time: 30, diagram: "pushup" },
+    { en: "Can the player throw a glass of water onto the floor from a height of about 3 meters so the glass doesn't break on landing?", ru: "Сможет ли игрок бросить стакан с водой на пол с высоты около 3 метров так, чтобы стакан не разбился при приземлении?", time: 30, diagram: "glassthrow" },
+    { en: "Can the player get into a tabletop position without using their hands? (3 tries)", ru: "Сможет ли игрок встать в стойку «стол» без помощи рук? (3 попытки)", time: 30 },
+    { en: "Can the player crouch and jump for 15 seconds so their feet touch the TV screen while a channel is playing?", ru: "Сможет ли игрок 15 секунд приседать и подпрыгивать так, чтобы ногами коснуться экрана телевизора, на котором идёт передача по одному из каналов?", time: 15 },
+    { en: "Can the player answer one question so that everyone hears exactly what they know or want to share about what they're playing for? (15 seconds)", ru: "Сможет ли игрок дать один ответ на один вопрос так, чтобы все услышали именно то, что игрок знает или хочет рассказать о игре на что-то? (15 секунд)", time: 15 },
+    { en: "Can the player balance a cube on a dice cup so the dice bounce up and touch the cube? Start with 3 tries, but the throwing distance can be increased up to 1 meter.", ru: "Сможет ли игрок удержать кубик на стаканчике для игральных костей так, чтобы кости подпрыгивали и задевали кубик? Сначала 3 попытки, но дистанцию можно увеличить до 1 метра.", time: 30 },
+    { en: "Can the player go into a one-arm handstand from standing, then throw something using a chair without falling? (repeat 3 times)", ru: "Сможет ли игрок встать на одну руку из положения стоя, а затем бросить что-то, используя стул, не падая? (нужно повторить 3 раза)", time: 30 },
+    { en: "Can the player throw a die from 1 meter away so it lands standing on the table? (3 tries — the die must land standing on the table)", ru: "Сможет ли игрок бросить игральную кость с расстояния 1 метр так, чтобы она встала на стол? (3 попытки, кубик должен приземлиться стоя на столе)", time: 30 },
+    { en: "Can the player write a text message in 30 seconds?", ru: "Сможет ли игрок написать SMS за 30 секунд?", time: 30 },
+    { en: "Can the player lift their feet onto a chair so it slides 0 to 2 meters away without falling? (3 tries)", ru: "Сможет ли игрок закинуть ноги на стул так, чтобы тот отъехал от 0 до 2 метров, не упав? (3 попытки)", time: 30 },
+    { en: "Can the player say 6-digit numbers as words within 30 seconds? Must give 4 correct answers in 30 seconds.", ru: "Сможет ли игрок за 30 секунд назвать 6-значные числа словами? Нужно дать 4 правильных ответа за 30 секунд.", time: 30 },
+    { en: "Can the player fill a 0.5-liter bottle with water from 1 meter away, holding it properly? (the bottle must stand on the table, up to 5 tries)", ru: "Сможет ли игрок наполнить бутылку 0,5 литра водой с расстояния 1 метр, правильно её держа? (бутылка должна стоять на столе, до 5 попыток)", time: 30 },
+    { en: "Can the player jump side to side 5 times, hands on the floor and legs lifted, pausing in place each time? Each landing must be on the opposite side from the last.", ru: "Сможет ли игрок 5 раз перепрыгнуть слева направо, опираясь руками на пол и поднимая ноги, останавливаясь на месте? После каждой остановки нужно приземляться уже с другой стороны.", time: 30 },
+    { en: "Can the player throw a pen from the floor so it sticks into the ceiling, then catch it as it falls back? (3 tries — must catch it in hand 2 out of 4 times)", ru: "Сможет ли игрок бросить ручку с пола так, чтобы она воткнулась в потолок, а затем поймать её обратно? (3 попытки — ручка должна оказаться в руке 2 раза из 4)", time: 30 },
+    { en: "Can the player lie down and bounce their knees 3 times in a row? (3 tries — 1 successful in a row)", ru: "Сможет ли игрок лечь и подряд 3 раза подбросить колени? (3 попытки — 1 успешная подряд)", time: 30 },
+    { en: "Can the player write 'Cha Cha Cha' 10 times on their phone?", ru: "Сможет ли игрок 10 раз написать «Ча-ча-ча» в телефоне? (можно писать по-английски 'Cha Cha Cha...')", time: 15 },
+    { en: "Balance a marker on your forehead for 5 seconds", ru: "Удержать маркер на лбу 5 секунд", time: 30 },
+    { en: "Bounce a ball and catch it 5 times in a row with one hand", ru: "Отбить мяч и поймать его 5 раз подряд одной рукой", time: 30 },
+    { en: "Stack 5 items on top of a motorcycle helmet", ru: "Уложить 5 предметов друг на друга на мотоциклетном шлеме", time: 60 },
+    { en: "Stand on one leg for 30 seconds", ru: "Простоять на одной ноге 30 секунд", time: 30 },
+    { en: "Do 10 jumping jacks while maintaining eye contact with a partner", ru: "Сделать 10 прыжков «звёздочка», не отводя взгляд от партнёра", time: 30 },
+    { en: "Spin around 10 times and walk in a straight line", ru: "Покружиться 10 раз и пройти по прямой линии", time: 30 },
+    { en: "Hold a plank position for 20 seconds", ru: "Продержаться в планке 20 секунд", time: 30 },
+    { en: "Toss and catch a ball behind your back", ru: "Подбросить и поймать мяч за спиной", time: 30 },
+    { en: "Balance a book on your head and walk 5 meters", ru: "Удержать книгу на голове и пройти 5 метров", time: 30 },
+    { en: "Dance the Macarena perfectly", ru: "Идеально станцевать «Макарену»", time: 60 },
+    { en: "Draw a checkmark (✓) on the floor. Throw a ball so it bounces off the floor, hits the wall, and comes back to your hand", ru: "Нарисуй на полу галочку (✓). Брось мяч так, чтобы он отскочил от пола, ударился о стену и вернулся в руку", time: 30, diagram: "bounce" },
+    { en: "Can the player do 10 squats while holding a broom horizontally above their head? Balance must be kept throughout.", ru: "Сможет ли игрок сделать 10 приседаний, держа метлу горизонтально над головой? Нужно сохранять равновесие всё время.", time: 30 },
+    { en: "Can the player juggle 2 balls with one hand for 10 seconds without dropping them?", ru: "Сможет ли игрок жонглировать 2 мячами одной рукой 10 секунд, не уронив их?", time: 30 },
+    { en: "Can the player walk backwards in a straight line for 10 meters with their eyes closed? Another player may only guide them verbally.", ru: "Сможет ли игрок пройти спиной вперёд по прямой 10 метров с закрытыми глазами? Другой игрок может подсказывать только голосом.", time: 45 },
+    { en: "Can the player spin a pen on their finger for 5 seconds like a basketball?", ru: "Сможет ли игрок покрутить ручку на пальце 5 секунд, как баскетбольный мяч?", time: 30 },
+    { en: "Can the player do 5 burpees in 30 seconds?", ru: "Сможет ли игрок сделать 5 берпи за 30 секунд?", time: 30 },
+    { en: "Can the player bounce a ping-pong ball on a paddle 20 times in a row without dropping it?", ru: "Сможет ли игрок 20 раз подряд отбить мяч для настольного тенниса ракеткой, не уронив его?", time: 30 },
+    { en: "Can the player build a house of cards at least 3 levels tall? (3 tries)", ru: "Сможет ли игрок построить карточный домик минимум в 3 этажа? (3 попытки)", time: 60 },
+    { en: "Can the player hold a wall-sit for 30 seconds?", ru: "Сможет ли игрок продержаться в положении «стул у стены» 30 секунд?", time: 30 },
+    { en: "Can the player toss and catch 3 objects in a row without dropping any?", ru: "Сможет ли игрок подбросить и поймать 3 предмета подряд, не уронив ни одного?", time: 30 },
+    { en: "Can the player do the worm dance move across 2 meters?", ru: "Сможет ли игрок станцевать «волну», проползая 2 метра?", time: 30 },
+    { en: "Can the player balance on one leg while touching their nose with the opposite hand for 15 seconds? Switch legs halfway through.", ru: "Сможет ли игрок простоять на одной ноге, касаясь носа противоположной рукой, 15 секунд? На середине нужно сменить ногу.", time: 30 },
+    { en: "Can the player moonwalk backwards for 3 meters?", ru: "Сможет ли игрок пройти лунной походкой 3 метра?", time: 30 },
+    { en: "Can the player spin around 5 times, then immediately stack 3 coins on top of each other? (2 tries)", ru: "Сможет ли игрок покружиться 5 раз, а затем сразу сложить 3 монеты друг на друга? (2 попытки)", time: 30 },
+    { en: "Can the player do 10 toe touches without bending their knees?", ru: "Сможет ли игрок 10 раз коснуться носков ног, не сгибая колени?", time: 30 },
+    { en: "Can the player balance a spoon on their nose for 10 seconds?", ru: "Сможет ли игрок удержать ложку на носу 10 секунд?", time: 30 },
+    { en: "Can the player crab-walk across the room and back (at least 5 meters each way)?", ru: "Сможет ли игрок пройти «крабом» через комнату и обратно (минимум 5 метров в каждую сторону)?", time: 45 },
+    { en: "Can the player clap their hands 100 times in 30 seconds?", ru: "Сможет ли игрок хлопнуть в ладоши 100 раз за 30 секунд?", time: 30 },
+    { en: "Can the player do 5 proper lunges on each leg (10 total) with their hands behind their head?", ru: "Сможет ли игрок сделать 5 идеальных выпадов на каждую ногу (10 всего), держа руки за головой?", time: 45 },
+    { en: "Can the player roll a pencil from the back of their hand to their fingertips without dropping it?", ru: "Сможет ли игрок прокатить карандаш от тыльной стороны ладони до кончиков пальцев, не уронив его?", time: 30 },
+    { en: "Can the player bounce a ball in a figure-8 pattern between their legs 10 times?", ru: "Сможет ли игрок 10 раз прокинуть мяч между ног по траектории восьмёрки?", time: 30 },
+    { en: "Can the player stand on a pillow on one leg for 20 seconds?", ru: "Сможет ли игрок простоять на подушке на одной ноге 20 секунд?", time: 30 },
+    { en: "Can the player write their name in the air with one foot while standing on the other leg?", ru: "Сможет ли игрок написать своё имя в воздухе ногой, стоя на другой ноге?", time: 30 },
+    { en: "Can the player do 10 high knees in place, clapping above their head each time?", ru: "Сможет ли игрок сделать 10 высоких подъёмов колен на месте, каждый раз хлопая над головой?", time: 30 },
+    { en: "Can the player pick up 10 small objects off the floor using only their toes and drop them into a container?", ru: "Сможет ли игрок поднять 10 мелких предметов с пола только пальцами ног и сложить их в контейнер?", time: 45 },
+    { en: "Can the player hold a yoga tree pose for 20 seconds on each leg?", ru: "Сможет ли игрок продержаться в позе «дерево» из йоги по 20 секунд на каждой ноге?", time: 45 },
+    { en: "Can the player toss a backpack so it lands and stays on their knee? 3 tries — one success is enough.", ru: "Сможет ли игрок закинуть рюкзак себе на колено? Рюкзак должен приземлиться и остаться на колене. 3 попытки — достаточно одного успеха.", time: 30 },
+    { en: "Can the player lift a chair, toss it up, and catch it before it hits the ground? Must repeat successfully 3 times. 3 attempts.", ru: "Сможет ли игрок поднять стул, подбросить его и поймать, прежде чем он коснётся пола? Нужно успешно повторить это 3 раза. 3 попытки.", time: 30 },
+    { en: "Can the player lie down and, stretching out their arms, reach the door and grab it? 3 tries — must reach the door while stretched out from lying down.", ru: "Сможет ли игрок лечь и, вытянув руки, дотянуться до двери и схватиться за неё? 3 попытки — нужно дотянуться до двери, вытянувшись из положения лёжа.", time: 30 },
+    { en: "Can the player keep a pillow 'in flight'? Continuously toss the pillow while hopping side to side, keeping it under their jacket. 5 attempts in 30 seconds without dropping it.", ru: "Сможет ли игрок удержать подушку «в полёте»? Нужно непрерывно подбрасывать подушку, перепрыгивая с одной стороны на другую, удерживая её под курткой. 5 попыток за 30 секунд, не уронив её.", time: 30 },
+    { en: "Can the player roll their eyes backward for 30 seconds?", ru: "Сможет ли игрок вращать глазами назад в течение 30 секунд?", time: 30 },
+    { en: "Can the player walk forward with fully straightened legs in an unusual gait for 20 steps?", ru: "Сможет ли игрок пройти вперёд на полностью прямых ногах необычной походкой 20 шагов?", time: 30 },
+    { en: "Can the player pick up an object (like a mushroom) off the floor with their toes 5 times, grab it, and lift it to hand level? Needs 2 successes out of 4 tries.", ru: "Сможет ли игрок 5 раз поднять с пола предмет (например, гриб) пальцами ног, схватить его и поднять до уровня руки? Нужно 2 успеха из 4 попыток.", time: 30 },
+    { en: "Can the player sit and toss a pillow to hold a pose with their legs raised toward the ceiling, body at an angle? 3 tries — at least once without losing balance.", ru: "Сможет ли игрок сесть и подбросить подушку так, чтобы удержать позу, в которой ноги подняты к потолку, а тело сидит под углом? 3 попытки — хотя бы раз без потери равновесия.", time: 30 },
+    { en: "Can the player hold a lying position for 30 seconds, head and feet raised, giving a thumbs-up sign on the floor? The body must stay roughly in the same position throughout.", ru: "Сможет ли игрок продержаться лёжа 30 секунд, приподняв голову и ноги и показывая знак «класс» на полу? Тело должно оставаться примерно в одном положении всё это время.", time: 30 },
+    { en: "Can the player, lying with straight legs, push their wrists or elbows in opposite directions? Task: push back from shoulder level. 2 successes out of 4 tries.", ru: "Сможет ли игрок, лёжа с прямыми ногами, толкать запястья или локти в противоположные стороны? Задание: толчок назад от уровня плеч. 2 успеха из 4 попыток.", time: 30 },
+    { en: "Can the player hold and clap coins between their palms for 15 seconds? 3 tries.", ru: "Сможет ли игрок за 15 секунд удержать и хлопнуть монетами между ладонями? 3 попытки.", time: 30 },
+    { en: "Can the player throw a pillow at a target and catch it? Throw from 3 meters away. 2 tries.", ru: "Сможет ли игрок бросить подушку в цель и поймать её? Бросок с расстояния 3 метра. 2 попытки.", time: 30 }
   ];
 
   const mentalTasks = [
-    { text: "Сможет ли игрок сложить лист А4 вчетверо, используя только одну руку?", time: 15 },
-    { text: "Назови 5 марок мотоциклов за 15 секунд", time: 15 },
-    { text: "Посчитай в обратном порядке от 100 до 85", time: 30 },
-    { text: "Назови все месяцы, в которых ровно 30 дней", time: 30 },
-    { text: "Произнеси алфавит в обратном порядке от Я до П", time: 30 },
-    { text: "Назови 8 стран Европы за 20 секунд", time: 30 },
-    { text: "Произнеси своё имя по буквам в обратном порядке", time: 15 },
-    { text: "Назови 7 предметов, которые можно найти на кухне", time: 30 },
-    { text: "Посчитай до 20 через два (2, 4, 6...)", time: 15 },
-    { text: "Назови дни недели в обратном порядке", time: 30 },
-    { text: "Назови 6 животных, которые живут в воде", time: 30 },
-    { text: "Расскажи таблицу умножения на 7 от 7×1 до 7×10", time: 30 },
-    { text: "Назови 10 столиц стран (любого континента)", time: 30 },
-    { text: "Назови 5 слов, рифмующихся со словом «кот»", time: 20 },
-    { text: "Посчитай от 1 до 30, заменяя каждое число, кратное 3, словом «баз»", time: 45 },
-    { text: "Назови 8 фруктов за 20 секунд", time: 20 },
-    { text: "Скажи скороговорку 5 раз быстро: «Карл у Клары украл кораллы»", time: 30 },
-    { text: "Назови все планеты Солнечной системы", time: 30 },
-    { text: "Назови 7 частей тела на любом иностранном языке", time: 30 },
-    { text: "Произнеси по буквам слово 'supercalifragilisticexpialidocious'", time: 45 },
-    { text: "Назови 10 цветов за 15 секунд", time: 15 },
-    { text: "Посчитай в обратном порядке от 50 до 30 через три (50, 47, 44...)", time: 30 },
-    { text: "Назови 6 музыкальных инструментов", time: 20 },
-    { text: "Произнеси алфавит, пропуская каждую третью букву (А, Б, Г, Д, Ж...)", time: 45 },
-    { text: "Назови 5 пьес Шекспира", time: 30 },
-    { text: "Назови 8 овощей за 20 секунд", time: 20 },
-    { text: "Для особенного человека: тот, кто читает эту карточку (не Lowell и не сам читающий), должен назвать 10 слов, начинающихся на «Car». Засчитывается 7 слов из 10.", time: 30 },
-    { text: "Сможет ли игрок назвать 4 марки шоколадных батончиков? (например, Mars, Snickers)", time: 30 },
-    { text: "Сможет ли игрок назвать пять сетевых брендов фастфуда?", time: 30 },
-    { text: "Сможет ли игрок назвать 5 ситкомов?", time: 30 },
-    { text: "Сможет ли игрок назвать 5 брендов спортивной одежды?", time: 30 },
-    { text: "Сможет ли игрок назвать 3 названия спортивных команд, начинающихся на букву С?", time: 30 },
-    { text: "Сможет ли игрок назвать 7 видов алкогольных напитков? (например, водка, виски, ром)", time: 30 },
-    { text: "Сможет ли игрок назвать 5 популярных певиц?", time: 30 },
-    { text: "Сможет ли игрок назвать 10 десертных блюд?", time: 30 },
-    { text: "Сможет ли игрок назвать 6 покемонов?", time: 30 },
-    { text: "Сможет ли игрок назвать 10 мест (городов), в названии которых 5 букв? Не менее 5.", time: 30 },
-    { text: "Сможет ли игрок назвать 5 терминов, связанных со спортивными клубами и формой? Не менее 3.", time: 30 },
-    { text: "Сможет ли игрок назвать 5 футбольных стадионов? Не менее 2.", time: 30 },
-    { text: "Сможет ли игрок назвать 4 разновидности гоночной «Формулы»? Формула-1?", time: 30 },
-    { text: "Сможет ли игрок назвать 9 предметов, которые можно найти на кухне? Не менее 5.", time: 30 },
-    { text: "Сможет ли игрок назвать 5 животных, которых можно встретить в зоопарке? Не менее 3.", time: 30 },
-    { text: "Сможет ли игрок произнести по буквам слово «электромагнетизм» без единой ошибки?", time: 30 },
-    { text: "Сможет ли игрок назвать по памяти 2 контакта из своего телефона (полное имя и номер)?", time: 30 },
-    { text: "Сможет ли игрок дать 6 правильных ответов?", time: 30 },
-    { text: "Сможет ли игрок дать 3 разных ответа?", time: 30 },
-    { text: "Сможет ли игрок назвать 3 марки автомобилей? 2 из них — на одну и ту же букву С?", time: 30 },
-    { text: "Сможет ли игрок назвать 2 марки автомобилей на букву С?", time: 30 },
-    { text: "Сможет ли игрок назвать 8 деталей автомобиля?", time: 30 },
-    { text: "Сможет ли игрок назвать 5 кухонных приборов или инструментов?", time: 30 },
-    { text: "Сможет ли игрок назвать 4 фрукта, в названии которых 6 букв?", time: 30 },
-    { text: "Сможет ли игрок назвать 6 брендов безалкогольных напитков?", time: 30 },
-    { text: "Сможет ли игрок назвать 5 фильмов о Джеймсе Бонде?", time: 30 },
-    { text: "Сможет ли игрок назвать 10 мультфильмов Disney?", time: 30 },
-    { text: "Сможет ли игрок назвать женское имя, мужское имя и имя спортсмена, начинающиеся на букву М?", time: 30 },
-    { text: "Сможет ли игрок назвать 10 радиостанций?", time: 30 },
-    { text: "Сможет ли игрок назвать 3 сказки Ганса Христиана Андерсена?", time: 30 },
-    { text: "Сможет ли игрок назвать 8 комиксов?", time: 30 },
-    { text: "Сможет ли игрок назвать 10 штатов США?", time: 30 },
-    { text: "Сможет ли игрок назвать 3 штата США?", time: 30 },
-    { text: "Сможет ли игрок за 60 секунд перечислить таблицу умножения на 7 от 7 до 70?", time: 30 },
-    { text: "Сможет ли игрок назвать 4 фрукта из 6 букв?", time: 30 },
-    { text: "Сможет ли игрок назвать 8 предметов, которые можно найти в шкафу?", time: 30 },
-    { text: "Сможет ли игрок посчитать вслух от 1 до 10, не помогая себе пальцами?", time: 30 },
-    { text: "Сможет ли игрок назвать 6 стран на букву П? (например, Польша)", time: 30 },
-    { text: "Сможет ли игрок назвать 6 книг, где название каждой следующей начинается на последнюю букву предыдущей?", time: 30 },
-    { text: "Сможет ли игрок назвать 6 людей (реальных или вымышленных), чьи имена начинаются на буквы слова ДРУЖБА (Д, Р, У, Ж, Б, А)?", time: 30 },
-    { text: "Сможет ли игрок молча досчитать до промежутка между 55 и 60 секундами, не превысив 60?", time: 65 },
-    { text: "Сможет ли игрок определить момент, когда прошло от 50 до 60 секунд, не превысив 60?", time: 65 },
-    { text: "Сможет ли игрок назвать 2 фрукта, в русском названии которых ровно 5 букв? (например, манго, лимон)", time: 30 },
-    { text: "Сможет ли игрок назвать 6 городов, где название каждого следующего начинается на последнюю букву предыдущего? (например, Стокгольм → Мадрид → …)", time: 30 },
-    { text: "Сможет ли игрок назвать 5 городов, в названии которых ровно 4 буквы? (например, Омск, Тула)", time: 30 },
-    { text: "Сможет ли игрок назвать 5 названий детёнышей животных? (например, щенок, жеребёнок, котёнок)", time: 30 },
-    { text: "Сможет ли игрок назвать 4 синонима слова «полиция»?", time: 30 },
-    { text: "Сможет ли игрок назвать женское и мужское имя, начинающиеся на одну и ту же букву К?", time: 30 },
-    { text: "Сможет ли игрок назвать 3 профессиональные спортивные команды за 20 секунд?", time: 20 },
-    { text: "Сможет ли игрок назвать две страны, флаги которых не имеют ни одного общего цвета?", time: 30 },
-    { text: "Сможет ли игрок назвать 5 марок мотоциклов?", time: 30 },
-    { text: "Сможет ли игрок назвать все месяцы, в которых ровно 31 день?", time: 30 },
-    { text: "Сможет ли игрок назвать 2 месяца, в которых ровно 30 дней?", time: 30 },
-    { text: "Сможет ли игрок назвать 8 предметов мебели?", time: 30 }
+    { en: "Can the player fold an A4 sheet 4 times using only one hand?", ru: "Сможет ли игрок сложить лист А4 вчетверо, используя только одну руку?", time: 15 },
+    { en: "Name 5 motorcycle brands in 15 seconds", ru: "Назови 5 марок мотоциклов за 15 секунд", time: 15 },
+    { en: "Count backwards from 100 to 85", ru: "Посчитай в обратном порядке от 100 до 85", time: 30 },
+    { en: "Name all the months that have exactly 30 days", ru: "Назови все месяцы, в которых ровно 30 дней", time: 30 },
+    { en: "Say the alphabet backwards from Z to P", ru: "Произнеси алфавит в обратном порядке от Я до П", time: 30 },
+    { en: "Name 8 European countries in 20 seconds", ru: "Назови 8 стран Европы за 20 секунд", time: 30 },
+    { en: "Spell your name backwards out loud", ru: "Произнеси своё имя по буквам в обратном порядке", time: 15 },
+    { en: "Name 7 items you'd find in a kitchen", ru: "Назови 7 предметов, которые можно найти на кухне", time: 30 },
+    { en: "Count to 20 in 2s (2, 4, 6...)", ru: "Посчитай до 20 через два (2, 4, 6...)", time: 15 },
+    { en: "Name the days of the week in reverse order", ru: "Назови дни недели в обратном порядке", time: 30 },
+    { en: "List 6 animals that live in water", ru: "Назови 6 животных, которые живут в воде", time: 30 },
+    { en: "Recite the multiplication table of 7, from 7x1 to 7x10", ru: "Расскажи таблицу умножения на 7 от 7×1 до 7×10", time: 30 },
+    { en: "Name 10 capital cities (any continent)", ru: "Назови 10 столиц стран (любого континента)", time: 30 },
+    { en: "Say 5 words that rhyme with 'cat'", ru: "Назови 5 слов, рифмующихся со словом «кот»", time: 20 },
+    { en: "Count from 1 to 30 but replace every number divisible by 3 with 'buzz'", ru: "Посчитай от 1 до 30, заменяя каждое число, кратное 3, словом «баз»", time: 45 },
+    { en: "Name 8 fruits in 20 seconds", ru: "Назови 8 фруктов за 20 секунд", time: 20 },
+    { en: "Say a tongue twister 5 times quickly: 'Red leather, yellow leather'", ru: "Скажи скороговорку 5 раз быстро: «Карл у Клары украл кораллы»", time: 30 },
+    { en: "Name all the planets in our solar system", ru: "Назови все планеты Солнечной системы", time: 30 },
+    { en: "List 7 body parts in a foreign language of your choice", ru: "Назови 7 частей тела на любом иностранном языке", time: 30 },
+    { en: "Spell 'supercalifragilisticexpialidocious' out loud", ru: "Произнеси по буквам слово 'supercalifragilisticexpialidocious'", time: 45 },
+    { en: "Name 10 colors in 15 seconds", ru: "Назови 10 цветов за 15 секунд", time: 15 },
+    { en: "Count backwards from 50 to 30 in 3s (50, 47, 44...)", ru: "Посчитай в обратном порядке от 50 до 30 через три (50, 47, 44...)", time: 30 },
+    { en: "Name 6 musical instruments", ru: "Назови 6 музыкальных инструментов", time: 20 },
+    { en: "Say the alphabet but skip every third letter (A, B, D, E, G...)", ru: "Произнеси алфавит, пропуская каждую третью букву (А, Б, Г, Д, Ж...)", time: 45 },
+    { en: "Name 5 Shakespeare plays", ru: "Назови 5 пьес Шекспира", time: 30 },
+    { en: "List 8 vegetables in 20 seconds", ru: "Назови 8 овощей за 20 секунд", time: 20 },
+    { en: "For a special person: one person reading this card (neither Lowell nor the card's reader) gets to name 10 words starting with 'Car'. They pass with 7 out of 10 words.", ru: "Для особенного человека: тот, кто читает эту карточку (не Lowell и не сам читающий), должен назвать 10 слов, начинающихся на «Car». Засчитывается 7 слов из 10.", time: 30 },
+    { en: "Can the player name 4 chocolate bar brands? (e.g. Mars, Snickers)", ru: "Сможет ли игрок назвать 4 марки шоколадных батончиков? (например, Mars, Snickers)", time: 30 },
+    { en: "Can the player name five fast-food chain brands?", ru: "Сможет ли игрок назвать пять сетевых брендов фастфуда?", time: 30 },
+    { en: "Can the player name 5 sitcoms?", ru: "Сможет ли игрок назвать 5 ситкомов?", time: 30 },
+    { en: "Can the player name 5 sportswear brands?", ru: "Сможет ли игрок назвать 5 брендов спортивной одежды?", time: 30 },
+    { en: "Can the player name 3 sports team names that start with the letter S?", ru: "Сможет ли игрок назвать 3 названия спортивных команд, начинающихся на букву С?", time: 30 },
+    { en: "Can the player name 7 types of alcoholic drinks? (e.g. vodka, whiskey, rum)", ru: "Сможет ли игрок назвать 7 видов алкогольных напитков? (например, водка, виски, ром)", time: 30 },
+    { en: "Can the player name 5 popular female singers?", ru: "Сможет ли игрок назвать 5 популярных певиц?", time: 30 },
+    { en: "Can the player name 10 dessert dishes?", ru: "Сможет ли игрок назвать 10 десертных блюд?", time: 30 },
+    { en: "Can the player name 6 Pokémon?", ru: "Сможет ли игрок назвать 6 покемонов?", time: 30 },
+    { en: "Can the player name 10 places (cities) with 5 letters in the name? At least 5.", ru: "Сможет ли игрок назвать 10 мест (городов), в названии которых 5 букв? Не менее 5.", time: 30 },
+    { en: "Can the player name 5 terms related to sports clubs or team apparel? At least 3.", ru: "Сможет ли игрок назвать 5 терминов, связанных со спортивными клубами и формой? Не менее 3.", time: 30 },
+    { en: "Can the player name 5 football stadiums? At least 2.", ru: "Сможет ли игрок назвать 5 футбольных стадионов? Не менее 2.", time: 30 },
+    { en: "Can the player name 4 types of racing 'Formula'? Formula 1?", ru: "Сможет ли игрок назвать 4 разновидности гоночной «Формулы»? Формула-1?", time: 30 },
+    { en: "Can the player name 9 items found in a kitchen? At least 5.", ru: "Сможет ли игрок назвать 9 предметов, которые можно найти на кухне? Не менее 5.", time: 30 },
+    { en: "Can the player name 5 animals found in a zoo? At least 3.", ru: "Сможет ли игрок назвать 5 животных, которых можно встретить в зоопарке? Не менее 3.", time: 30 },
+    { en: "Can the player spell 'electromagnetism' out loud without a single mistake?", ru: "Сможет ли игрок произнести по буквам слово «электромагнетизм» без единой ошибки?", time: 30 },
+    { en: "Can the player name 2 contacts from their phone by memory (full name and number)?", ru: "Сможет ли игрок назвать по памяти 2 контакта из своего телефона (полное имя и номер)?", time: 30 },
+    { en: "Can the player give 6 correct answers?", ru: "Сможет ли игрок дать 6 правильных ответов?", time: 30 },
+    { en: "Can the player give 3 different answers?", ru: "Сможет ли игрок дать 3 разных ответа?", time: 30 },
+    { en: "Can the player name 3 car brands? 2 of them starting with the same letter C?", ru: "Сможет ли игрок назвать 3 марки автомобилей? 2 из них — на одну и ту же букву С?", time: 30 },
+    { en: "Can the player name 2 car brands starting with the letter C?", ru: "Сможет ли игрок назвать 2 марки автомобилей на букву С?", time: 30 },
+    { en: "Can the player name 8 car parts?", ru: "Сможет ли игрок назвать 8 деталей автомобиля?", time: 30 },
+    { en: "Can the player name 5 kitchen utensils or tools?", ru: "Сможет ли игрок назвать 5 кухонных приборов или инструментов?", time: 30 },
+    { en: "Can the player name 4 fruits with 6 letters in the name?", ru: "Сможет ли игрок назвать 4 фрукта, в названии которых 6 букв?", time: 30 },
+    { en: "Can the player name 6 soft drink brands?", ru: "Сможет ли игрок назвать 6 брендов безалкогольных напитков?", time: 30 },
+    { en: "Can the player name 5 James Bond movies?", ru: "Сможет ли игрок назвать 5 фильмов о Джеймсе Бонде?", time: 30 },
+    { en: "Can the player name 10 Disney movies?", ru: "Сможет ли игрок назвать 10 мультфильмов Disney?", time: 30 },
+    { en: "Can the player name a female name, a male name, and an athlete's name that all start with the letter J?", ru: "Сможет ли игрок назвать женское имя, мужское имя и имя спортсмена, начинающиеся на букву М?", time: 30 },
+    { en: "Can the player name 10 radio stations?", ru: "Сможет ли игрок назвать 10 радиостанций?", time: 30 },
+    { en: "Can the player name 3 Hans Christian Andersen fairy tales?", ru: "Сможет ли игрок назвать 3 сказки Ганса Христиана Андерсена?", time: 30 },
+    { en: "Can the player name 8 comic books?", ru: "Сможет ли игрок назвать 8 комиксов?", time: 30 },
+    { en: "Can the player name 10 US states?", ru: "Сможет ли игрок назвать 10 штатов США?", time: 30 },
+    { en: "Can the player name 3 US states?", ru: "Сможет ли игрок назвать 3 штата США?", time: 30 },
+    { en: "Can the player recite the multiplication table of 7, from 7 to 70, in 60 seconds?", ru: "Сможет ли игрок за 60 секунд перечислить таблицу умножения на 7 от 7 до 70?", time: 30 },
+    { en: "Can the player name 4 fruits made up of 6 letters?", ru: "Сможет ли игрок назвать 4 фрукта из 6 букв?", time: 30 },
+    { en: "Can the player name 8 items that can be found in a closet?", ru: "Сможет ли игрок назвать 8 предметов, которые можно найти в шкафу?", time: 30 },
+    { en: "Can the player count out loud from 1 to 10 without using their fingers to help?", ru: "Сможет ли игрок посчитать вслух от 1 до 10, не помогая себе пальцами?", time: 30 },
+    { en: "Can the player name 6 countries that start with the letter P? (e.g. Poland)", ru: "Сможет ли игрок назвать 6 стран на букву П? (например, Польша)", time: 30 },
+    { en: "Can the player name 6 books where each subsequent title starts with the last letter of the previous one?", ru: "Сможет ли игрок назвать 6 книг, где название каждой следующей начинается на последнюю букву предыдущей?", time: 30 },
+    { en: "Can the player name 6 people (real or fictional) whose first names each start with a letter of the word FRIEND (F, R, I, E, N, D)?", ru: "Сможет ли игрок назвать 6 людей (реальных или вымышленных), чьи имена начинаются на буквы слова ДРУЖБА (Д, Р, У, Ж, Б, А)?", time: 30 },
+    { en: "Can the player silently count to somewhere between 55 and 60 seconds, without going over 60?", ru: "Сможет ли игрок молча досчитать до промежутка между 55 и 60 секундами, не превысив 60?", time: 65 },
+    { en: "Can the player determine the moment when 50 to 60 seconds have passed, without going over 60?", ru: "Сможет ли игрок определить момент, когда прошло от 50 до 60 секунд, не превысив 60?", time: 65 },
+    { en: "Can the player name 2 fruits with exactly 5 letters in their English name? (e.g. mango, lemon)", ru: "Сможет ли игрок назвать 2 фрукта, в русском названии которых ровно 5 букв? (например, манго, лимон)", time: 30 },
+    { en: "Can the player name 6 cities where each subsequent city starts with the last letter of the previous one? (e.g. Stockholm → Madrid → …)", ru: "Сможет ли игрок назвать 6 городов, где название каждого следующего начинается на последнюю букву предыдущего? (например, Стокгольм → Мадрид → …)", time: 30 },
+    { en: "Can the player name 5 cities with exactly 4 letters in their English name? (e.g. Lima, Oslo)", ru: "Сможет ли игрок назвать 5 городов, в названии которых ровно 4 буквы? (например, Омск, Тула)", time: 30 },
+    { en: "Can the player name 5 baby animal names? (e.g. puppy, foal, kitten)", ru: "Сможет ли игрок назвать 5 названий детёнышей животных? (например, щенок, жеребёнок, котёнок)", time: 30 },
+    { en: "Can the player name 4 synonyms for the word 'police'?", ru: "Сможет ли игрок назвать 4 синонима слова «полиция»?", time: 30 },
+    { en: "Can the player give a female and a male name that both start with the letter K?", ru: "Сможет ли игрок назвать женское и мужское имя, начинающиеся на одну и ту же букву К?", time: 30 },
+    { en: "Can the player name 3 professional sports teams in 20 seconds?", ru: "Сможет ли игрок назвать 3 профессиональные спортивные команды за 20 секунд?", time: 20 },
+    { en: "Can the player name two countries whose flags don't share a single color with each other?", ru: "Сможет ли игрок назвать две страны, флаги которых не имеют ни одного общего цвета?", time: 30 },
+    { en: "Can the player name 5 motorcycle brands?", ru: "Сможет ли игрок назвать 5 марок мотоциклов?", time: 30 },
+    { en: "Can the player name all the months that have exactly 31 days?", ru: "Сможет ли игрок назвать все месяцы, в которых ровно 31 день?", time: 30 },
+    { en: "Can the player name 2 months that have exactly 30 days?", ru: "Сможет ли игрок назвать 2 месяца, в которых ровно 30 дней?", time: 30 },
+    { en: "Can the player name 8 pieces of furniture?", ru: "Сможет ли игрок назвать 8 предметов мебели?", time: 30 }
   ];
 
   const diceFaces = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
@@ -381,11 +465,31 @@ const BetYouCantGame = () => {
   });
   const [copiedId, setCopiedId] = useState(null);
 
+  const [lang, setLang] = useState(() => {
+    try {
+      const stored = localStorage.getItem('lang');
+      if (stored === 'en' || stored === 'ru') return stored;
+    } catch (e) {}
+    return (navigator.language || '').toLowerCase().startsWith('ru') ? 'ru' : 'en';
+  });
+
+  useEffect(() => {
+    try { localStorage.setItem('lang', lang); } catch (e) {}
+    document.documentElement.lang = lang;
+    document.title = t(lang, 'title');
+  }, [lang]);
+
   const apiBase = () => `${window.location.origin}/api/games`;
 
-  // Appends our own player id so the server knows which bet (if any) it's
-  // safe to reveal to us — other players' bets are always withheld.
-  const viewerQuery = () => (myPlayerId !== null ? `?playerId=${myPlayerId}` : '');
+  // Appends our own player id (so the server knows which bet, if any, is
+  // safe to reveal to us) and the current UI language (for translated
+  // server-side error messages).
+  const viewerQuery = () => {
+    const p = new URLSearchParams();
+    if (myPlayerId !== null) p.set('playerId', myPlayerId);
+    p.set('lang', lang);
+    return `?${p.toString()}`;
+  };
 
   const claimPlayer = (id) => {
     setMyPlayerId(id);
@@ -438,7 +542,7 @@ const BetYouCantGame = () => {
           setApiError(null);
         }
       } catch (e) {
-        if (!cancelled) setApiError("Не удаётся подключиться к серверу игры. Убедитесь, что он запущен и вы в одной сети.");
+        if (!cancelled) setApiError(t(lang, 'connectionError'));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -446,11 +550,11 @@ const BetYouCantGame = () => {
     refresh();
     const interval = setInterval(refresh, 1500);
     return () => { cancelled = true; clearInterval(interval); };
-  }, [gameId, myPlayerId]);
+  }, [gameId, myPlayerId, lang]);
 
   useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
+    const tickInterval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(tickInterval);
   }, []);
 
   const endGameTriggeredRef = React.useRef(false);
@@ -472,20 +576,20 @@ const BetYouCantGame = () => {
       });
       const data = await res.json();
       if (!res.ok) {
-        return { error: data.error || 'Что-то пошло не так' };
+        return { error: data.error || t(lang, 'somethingWrong') };
       }
       setGs(data);
       setApiError(null);
       return { data };
     } catch (e) {
-      setApiError("Не удаётся подключиться к серверу игры. Убедитесь, что он запущен и вы в одной сети.");
-      return { error: 'ошибка сети' };
+      setApiError(t(lang, 'connectionError'));
+      return { error: t(lang, 'networkError') };
     }
   };
 
   const createGame = async () => {
     try {
-      const res = await fetch(apiBase() + '/', {
+      const res = await fetch(`${apiBase()}/${viewerQuery()}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -496,7 +600,7 @@ const BetYouCantGame = () => {
       });
       const data = await res.json();
       if (!res.ok) {
-        setApiError(data.error || 'Не удалось создать игру');
+        setApiError(data.error || t(lang, 'couldNotCreateGame'));
         return;
       }
       setGameId(data.gameId);
@@ -507,7 +611,7 @@ const BetYouCantGame = () => {
       url.searchParams.set('a', data.adminToken);
       window.history.replaceState(null, '', url.toString());
     } catch (e) {
-      setApiError("Не удаётся подключиться к серверу игры. Он запущен?");
+      setApiError(t(lang, 'cantReachIsItRunning'));
     }
   };
 
@@ -519,7 +623,8 @@ const BetYouCantGame = () => {
   const currentTaskObject = (state) => {
     if (!state || !state.currentTaskType || state.currentTaskIndex == null) return null;
     const list = state.currentTaskType === 'skill' ? skillTasks : mentalTasks;
-    return { ...list[state.currentTaskIndex], type: state.currentTaskType };
+    const entry = list[state.currentTaskIndex];
+    return { ...entry, text: entry[lang], type: state.currentTaskType };
   };
 
   const startChallenge = () => {
@@ -542,7 +647,7 @@ const BetYouCantGame = () => {
     if (myPlayerId !== null || !gs || !gs.players) return null;
     return (
       <div className="bg-yellow-50 border-2 border-yellow-400 rounded-lg p-3 mb-4 text-center">
-        <p className="font-semibold mb-2 text-sm">Играете с этого телефона? Нажмите на своё имя:</p>
+        <p className="font-semibold mb-2 text-sm">{t(lang, 'tapYourName')}</p>
         <div className="flex flex-wrap gap-2 justify-center">
           {gs.players.map(p => (
             <button
@@ -558,7 +663,8 @@ const BetYouCantGame = () => {
     );
   };
 
-  const renderDiagram = (diagramType) => {
+  const renderDiagram = (diagramType, lang) => {
+    const L = (en, ru) => (lang === 'ru' ? ru : en);
     if (diagramType === 'fold') {
       return (
         <div className="bg-white p-4 rounded-lg border-2 border-gray-300 mb-4">
@@ -597,7 +703,7 @@ const BetYouCantGame = () => {
               </marker>
             </defs>
           </svg>
-          <p className="text-center text-sm text-gray-600 mt-2">Сложи бумагу 4 раза, используя только ОДНУ руку</p>
+          <p className="text-center text-sm text-gray-600 mt-2">{L("Fold the paper 4 times using only ONE hand", "Сложи бумагу 4 раза, используя только ОДНУ руку")}</p>
         </div>
       );
     }
@@ -616,7 +722,7 @@ const BetYouCantGame = () => {
               <line x1="0" y1="30" x2="25" y2="20" stroke="#333" strokeWidth="3"/>
             </g>
             <line x1="20" y1="150" x2="120" y2="150" stroke="#666" strokeWidth="2"/>
-            <text x="70" y="170" textAnchor="middle" fontSize="16">Старт</text>
+            <text x="70" y="170" textAnchor="middle" fontSize="16">{L("Start", "Старт")}</text>
             
             <path d="M 130 100 L 160 100" stroke="#333" strokeWidth="2" markerEnd="url(#arrowhead2)"/>
             
@@ -630,7 +736,7 @@ const BetYouCantGame = () => {
               <line x1="0" y1="25" x2="20" y2="15" stroke="#333" strokeWidth="3"/>
             </g>
             <line x1="220" y1="170" x2="220" y2="150" stroke="#666" strokeWidth="2"/>
-            <text x="220" y="190" textAnchor="middle" fontSize="16">Подъём</text>
+            <text x="220" y="190" textAnchor="middle" fontSize="16">{L("Sit Up", "Подъём")}</text>
             
             <defs>
               <marker id="arrowhead2" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
@@ -638,7 +744,7 @@ const BetYouCantGame = () => {
               </marker>
             </defs>
           </svg>
-          <p className="text-center text-sm text-gray-600 mt-2">Держи ноги ПРЯМО — 2 успешные попытки из 3</p>
+          <p className="text-center text-sm text-gray-600 mt-2">{L("Keep legs STRAIGHT — 2 successful tries out of 3", "Держи ноги ПРЯМО — 2 успешные попытки из 3")}</p>
         </div>
       );
     }
@@ -669,7 +775,7 @@ const BetYouCantGame = () => {
               </marker>
             </defs>
           </svg>
-          <p className="text-center text-sm text-gray-600 mt-2">Брось ручку → Поймай её в бутылку (2 успешных поимки)</p>
+          <p className="text-center text-sm text-gray-600 mt-2">{L("Throw pen → Catch it in bottle (2 successful catches)", "Брось ручку → Поймай её в бутылку (2 успешных поимки)")}</p>
         </div>
       );
     }
@@ -684,7 +790,7 @@ const BetYouCantGame = () => {
               <rect x="-12" y="-60" width="24" height="12" fill="#81d4fa" stroke="#333" strokeWidth="2"/>
               <line x1="-20" y1="0" x2="20" y2="0" stroke="#666" strokeWidth="2"/>
             </g>
-            <text x="80" y="210" textAnchor="middle" fontSize="14">Старт</text>
+            <text x="80" y="210" textAnchor="middle" fontSize="14">{L("Start", "Старт")}</text>
             
             {/* Bottle flipping */}
             <g transform="translate(200, 100) rotate(180)">
@@ -698,7 +804,7 @@ const BetYouCantGame = () => {
               <rect x="-12" y="-60" width="24" height="12" fill="#81d4fa" stroke="#333" strokeWidth="2"/>
               <line x1="-20" y1="0" x2="20" y2="0" stroke="#666" strokeWidth="2"/>
             </g>
-            <text x="320" y="210" textAnchor="middle" fontSize="14">Приземление!</text>
+            <text x="320" y="210" textAnchor="middle" fontSize="14">{L("Landed!", "Приземление!")}</text>
             
             {/* Arrows */}
             <path d="M 100 170 Q 150 100, 180 110" stroke="#2196F3" strokeWidth="3" fill="none" markerEnd="url(#arrowhead4)"/>
@@ -710,7 +816,7 @@ const BetYouCantGame = () => {
               </marker>
             </defs>
           </svg>
-          <p className="text-center text-sm text-gray-600 mt-2">Подбрось бутылку так, чтобы она встала (2 из 3 попыток)</p>
+          <p className="text-center text-sm text-gray-600 mt-2">{L("Flip bottle to land upright (2 out of 3 tries)", "Подбрось бутылку так, чтобы она встала (2 из 3 попыток)")}</p>
         </div>
       );
     }
@@ -747,7 +853,7 @@ const BetYouCantGame = () => {
               </marker>
             </defs>
           </svg>
-          <p className="text-center text-sm text-gray-600 mt-2">Прыгай через скакалку 15 секунд — высоко поднимай колени!</p>
+          <p className="text-center text-sm text-gray-600 mt-2">{L("Jump rope for 15 seconds — raise your knees high!", "Прыгай через скакалку 15 секунд — высоко поднимай колени!")}</p>
         </div>
       );
     }
@@ -777,7 +883,7 @@ const BetYouCantGame = () => {
             
             {/* Ground */}
             <line x1="100" y1="220" x2="300" y2="220" stroke="#666" strokeWidth="3"/>
-            <text x="200" y="240" textAnchor="middle" fontSize="14">Удар об пол → Лови!</text>
+            <text x="200" y="240" textAnchor="middle" fontSize="14">{L("Hit floor → Catch!", "Удар об пол → Лови!")}</text>
             
             <defs>
               <marker id="arrowhead6" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto">
@@ -785,7 +891,7 @@ const BetYouCantGame = () => {
               </marker>
             </defs>
           </svg>
-          <p className="text-center text-sm text-gray-600 mt-2">Подбрось ластик вверх → Удар об пол → Поймай! (2 из 3)</p>
+          <p className="text-center text-sm text-gray-600 mt-2">{L("Throw eraser up → Hit floor → Catch it! (2 out of 3)", "Подбрось ластик вверх → Удар об пол → Поймай! (2 из 3)")}</p>
         </div>
       );
     }
@@ -796,11 +902,11 @@ const BetYouCantGame = () => {
           <svg viewBox="0 0 400 250" className="w-full h-auto">
             {/* Wall */}
             <rect x="350" y="0" width="10" height="200" fill="#8b4513"/>
-            <text x="330" y="220" fontSize="14" fill="#666">Стена</text>
+            <text x="330" y="220" fontSize="14" fill="#666">{L("Wall", "Стена")}</text>
             
             {/* Floor */}
             <line x1="0" y1="200" x2="360" y2="200" stroke="#666" strokeWidth="3"/>
-            <text x="180" y="230" textAnchor="middle" fontSize="14" fill="#666">Пол</text>
+            <text x="180" y="230" textAnchor="middle" fontSize="14" fill="#666">{L("Floor", "Пол")}</text>
             
             {/* Player */}
             <g transform="translate(50, 140)">
@@ -827,7 +933,7 @@ const BetYouCantGame = () => {
             
             {/* Checkmark on floor */}
             <path d="M 120 210 L 180 240 L 300 190" stroke="#4CAF50" strokeWidth="4" fill="none"/>
-            <text x="210" y="245" textAnchor="middle" fontSize="12" fill="#4CAF50">✓ форма</text>
+            <text x="210" y="245" textAnchor="middle" fontSize="12" fill="#4CAF50">{L("✓ shape", "✓ форма")}</text>
             
             <defs>
               <marker id="arrowhead7" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
@@ -835,7 +941,7 @@ const BetYouCantGame = () => {
               </marker>
             </defs>
           </svg>
-          <p className="text-center text-sm text-gray-600 mt-2">① Отскок от пола → ② Удар о стену → ③ Поймай мяч</p>
+          <p className="text-center text-sm text-gray-600 mt-2">{L("① Bounce off floor → ② Hit wall → ③ Catch ball", "① Отскок от пола → ② Удар о стену → ③ Поймай мяч")}</p>
         </div>
       );
     }
@@ -846,11 +952,11 @@ const BetYouCantGame = () => {
           <svg viewBox="0 0 400 300" className="w-full h-auto">
             {/* Ceiling */}
             <line x1="0" y1="20" x2="400" y2="20" stroke="#666" strokeWidth="3"/>
-            <text x="200" y="15" textAnchor="middle" fontSize="14" fill="#666">Потолок</text>
+            <text x="200" y="15" textAnchor="middle" fontSize="14" fill="#666">{L("Ceiling", "Потолок")}</text>
             
             {/* Floor */}
             <line x1="0" y1="280" x2="400" y2="280" stroke="#666" strokeWidth="3"/>
-            <text x="200" y="298" textAnchor="middle" fontSize="14" fill="#666">Пол</text>
+            <text x="200" y="298" textAnchor="middle" fontSize="14" fill="#666">{L("Floor", "Пол")}</text>
             
             {/* Ball on floor */}
             <circle cx="200" cy="270" r="10" fill="#ff5722" stroke="#333" strokeWidth="2"/>
@@ -862,8 +968,8 @@ const BetYouCantGame = () => {
             <path d="M 200 140 L 200 30" stroke="#4CAF50" strokeWidth="3" fill="none" strokeDasharray="5,5" markerEnd="url(#arrowhead9)"/>
             <circle cx="200" cy="30" r="8" fill="#ff5722" stroke="#333" strokeWidth="2"/>
             
-            <text x="220" y="200" fontSize="14" fill="#2196F3">①Отскок</text>
-            <text x="220" y="80" fontSize="14" fill="#4CAF50">②Удар о потолок</text>
+            <text x="220" y="200" fontSize="14" fill="#2196F3">{L("①Bounce", "①Отскок")}</text>
+            <text x="220" y="80" fontSize="14" fill="#4CAF50">{L("②Hit ceiling", "②Удар о потолок")}</text>
             
             <defs>
               <marker id="arrowhead8" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto">
@@ -874,7 +980,7 @@ const BetYouCantGame = () => {
               </marker>
             </defs>
           </svg>
-          <p className="text-center text-sm text-gray-600 mt-2">Брось мяч от пола, чтобы он ударился о потолок (1 из 3 попыток)</p>
+          <p className="text-center text-sm text-gray-600 mt-2">{L("Throw ball from floor to hit ceiling (1 out of 3 tries)", "Брось мяч от пола, чтобы он ударился о потолок (1 из 3 попыток)")}</p>
         </div>
       );
     }
@@ -915,9 +1021,9 @@ const BetYouCantGame = () => {
               <circle cx="7" cy="3" r="2" fill="#333"/>
             </g>
             
-            <text x="200" y="230" textAnchor="middle" fontSize="14" fill="#666">Собери 5 кубиков!</text>
+            <text x="200" y="230" textAnchor="middle" fontSize="14" fill="#666">{L("Stack 5 dice!", "Собери 5 кубиков!")}</text>
           </svg>
-          <p className="text-center text-sm text-gray-600 mt-2">Поставь 5 кубиков друг на друга (2 из 3 попыток)</p>
+          <p className="text-center text-sm text-gray-600 mt-2">{L("Stack 5 dice on top of each other (2 out of 3 tries)", "Поставь 5 кубиков друг на друга (2 из 3 попыток)")}</p>
         </div>
       );
     }
@@ -941,7 +1047,7 @@ const BetYouCantGame = () => {
             
             {/* Down arrow with "STOP 2s" */}
             <path d="M 200 75 L 200 85" stroke="#ff0000" strokeWidth="3" markerEnd="url(#arrowhead10)"/>
-            <text x="220" y="90" fontSize="12" fill="#ff0000">СТОП 2с</text>
+            <text x="220" y="90" fontSize="12" fill="#ff0000">{L("STOP 2s", "СТОП 2с")}</text>
             
             <defs>
               <marker id="arrowhead10" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto">
@@ -949,7 +1055,7 @@ const BetYouCantGame = () => {
               </marker>
             </defs>
           </svg>
-          <p className="text-center text-sm text-gray-600 mt-2">5 отжиманий с 2-секундной задержкой внизу</p>
+          <p className="text-center text-sm text-gray-600 mt-2">{L("5 push-ups with a 2-second pause at the bottom", "5 отжиманий с 2-секундной задержкой внизу")}</p>
         </div>
       );
     }
@@ -979,7 +1085,7 @@ const BetYouCantGame = () => {
             {/* Glass landed */}
             <g transform="translate(200, 270)">
               <path d="M -5,0 L -8,15 L 8,15 L 5,0 Z" fill="#87CEEB" stroke="#333" strokeWidth="2"/>
-              <text x="0" y="30" textAnchor="middle" fontSize="12" fill="#4CAF50">✓Цел!</text>
+              <text x="0" y="30" textAnchor="middle" fontSize="12" fill="#4CAF50">{L("✓Safe!", "✓Цел!")}</text>
             </g>
             
             {/* Floor */}
@@ -987,7 +1093,7 @@ const BetYouCantGame = () => {
             
             {/* Height marker */}
             <line x1="350" y1="80" x2="350" y2="280" stroke="#ff0000" strokeWidth="2" strokeDasharray="4"/>
-            <text x="360" y="180" fontSize="12" fill="#ff0000">3м</text>
+            <text x="360" y="180" fontSize="12" fill="#ff0000">{L("3m", "3м")}</text>
             
             <defs>
               <marker id="arrowhead11" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto">
@@ -995,7 +1101,7 @@ const BetYouCantGame = () => {
               </marker>
             </defs>
           </svg>
-          <p className="text-center text-sm text-gray-600 mt-2">Брось стакан с высоты 3 метра — он не должен разбиться!</p>
+          <p className="text-center text-sm text-gray-600 mt-2">{L("Throw the glass from 3 meters up — it must not break!", "Брось стакан с высоты 3 метра — он не должен разбиться!")}</p>
         </div>
       );
     }
@@ -1020,7 +1126,7 @@ const BetYouCantGame = () => {
             {/* Cup landed upright */}
             <g transform="translate(250, 195)">
               <path d="M -8,0 L -10,15 L 10,15 L 8,0 Z" fill="#4fc3f7" stroke="#333" strokeWidth="2"/>
-              <text x="0" y="30" textAnchor="middle" fontSize="12" fill="#4CAF50">Стоит!</text>
+              <text x="0" y="30" textAnchor="middle" fontSize="12" fill="#4CAF50">{L("Upright!", "Стоит!")}</text>
             </g>
             
             {/* Floor */}
@@ -1032,7 +1138,7 @@ const BetYouCantGame = () => {
               </marker>
             </defs>
           </svg>
-          <p className="text-center text-sm text-gray-600 mt-2">Брось стакан так, чтобы он встал (2 из 4 попыток)</p>
+          <p className="text-center text-sm text-gray-600 mt-2">{L("Throw the cup so it lands upright (2 out of 4 tries)", "Брось стакан так, чтобы он встал (2 из 4 попыток)")}</p>
         </div>
       );
     }
@@ -1040,41 +1146,39 @@ const BetYouCantGame = () => {
     return null;
   };
 
+  let content;
+
   if (apiError && !gs) {
-    return (
+    content = (
       <div className="min-h-screen bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center p-4">
         <div className="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full text-center">
-          <h1 className="text-2xl font-bold mb-3 text-purple-600">Не удаётся подключиться к игре</h1>
+          <h1 className="text-2xl font-bold mb-3 text-purple-600">{t(lang, 'cantReachTitle')}</h1>
           <p className="text-gray-600 mb-6">{apiError}</p>
           <button
             onClick={() => window.location.reload()}
             className="w-full bg-purple-600 text-white py-3 rounded-lg font-bold text-lg hover:bg-purple-700 transition"
           >
-            Повторить
+            {t(lang, 'retry')}
           </button>
         </div>
       </div>
     );
-  }
-
-  if (loading && !gs) {
-    return (
+  } else if (loading && !gs) {
+    content = (
       <div className="min-h-screen bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center p-4">
-        <p className="text-white text-lg font-semibold">Загрузка игры…</p>
+        <p className="text-white text-lg font-semibold">{t(lang, 'loadingGame')}</p>
       </div>
     );
-  }
-
-  if (!gs) {
-    return (
+  } else if (!gs) {
+    content = (
       <div className="min-h-screen bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center p-4">
         <div className="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full">
-          <h1 className="text-4xl font-bold text-center mb-6 text-purple-600">Спорим, не сможешь!</h1>
+          <h1 className="text-4xl font-bold text-center mb-6 text-purple-600">{t(lang, 'title')}</h1>
 
           {localSetup.setupStep === 'config' && (
             <div className="space-y-6">
               <div>
-                <label className="block text-gray-700 font-semibold mb-2">Количество игроков (3–8)</label>
+                <label className="block text-gray-700 font-semibold mb-2">{t(lang, 'numPlayersLabel')}</label>
                 <div className="flex items-center gap-3">
                   <button
                     type="button"
@@ -1103,7 +1207,7 @@ const BetYouCantGame = () => {
               </div>
 
               <div>
-                <label className="block text-gray-700 font-semibold mb-2">Длительность игры (минут)</label>
+                <label className="block text-gray-700 font-semibold mb-2">{t(lang, 'gameDurationLabel')}</label>
                 <div className="flex items-center gap-3">
                   <button
                     type="button"
@@ -1129,16 +1233,16 @@ const BetYouCantGame = () => {
                 onClick={() => setLocalSetup(prev => ({ ...prev, setupStep: 'names' }))}
                 className="w-full bg-purple-600 text-white py-3 rounded-lg font-bold text-lg hover:bg-purple-700 transition"
               >
-                Далее: указать имена игроков
+                {t(lang, 'nextSetNames')}
               </button>
 
               <div className="p-4 bg-purple-50 rounded-lg text-sm text-gray-700">
-                <p className="font-semibold mb-2">Как играть:</p>
+                <p className="font-semibold mb-2">{t(lang, 'howToPlayTitle')}</p>
                 <ul className="list-disc list-inside space-y-1">
-                  <li>Бросай кубик и двигайся по полю</li>
-                  <li>Выполняй задания на ловкость или смекалку</li>
-                  <li>Делай ставки на успех других игроков</li>
-                  <li>Собери больше всех денег и победи!</li>
+                  <li>{t(lang, 'howToPlay1')}</li>
+                  <li>{t(lang, 'howToPlay2')}</li>
+                  <li>{t(lang, 'howToPlay3')}</li>
+                  <li>{t(lang, 'howToPlay4')}</li>
                 </ul>
               </div>
             </div>
@@ -1150,15 +1254,15 @@ const BetYouCantGame = () => {
                 onClick={() => setLocalSetup(prev => ({ ...prev, setupStep: 'config' }))}
                 className="text-purple-600 hover:text-purple-700 font-semibold mb-2"
               >
-                ← Назад
+                {t(lang, 'back')}
               </button>
 
-              <h2 className="text-2xl font-bold text-gray-800 mb-4">Введите имена игроков</h2>
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">{t(lang, 'enterPlayerNames')}</h2>
 
               <div className="space-y-3">
                 {Array.from({ length: localSetup.numPlayers }).map((_, index) => (
                   <div key={index}>
-                    <label className="block text-gray-700 font-semibold mb-1">Игрок {index + 1}</label>
+                    <label className="block text-gray-700 font-semibold mb-1">{t(lang, 'playerLabel', index + 1)}</label>
                     <input
                       type="text"
                       value={localSetup.playerNames[index] || ''}
@@ -1167,7 +1271,7 @@ const BetYouCantGame = () => {
                         names[index] = e.target.value;
                         setLocalSetup(prev => ({ ...prev, playerNames: names }));
                       }}
-                      placeholder={`Игрок ${index + 1}`}
+                      placeholder={t(lang, 'playerLabel', index + 1)}
                       className="w-full px-4 py-2 border-2 border-purple-300 rounded-lg focus:border-purple-500 outline-none"
                     />
                   </div>
@@ -1178,31 +1282,29 @@ const BetYouCantGame = () => {
                 onClick={createGame}
                 className="w-full bg-purple-600 text-white py-3 rounded-lg font-bold text-lg hover:bg-purple-700 transition"
               >
-                Создать игру
+                {t(lang, 'createGame')}
               </button>
 
-              <p className="text-sm text-gray-500 text-center">Оставьте пустым, чтобы использовать имена по умолчанию</p>
+              <p className="text-sm text-gray-500 text-center">{t(lang, 'leaveBlankDefault')}</p>
             </div>
           )}
           {apiError && <p className="text-red-600 text-sm text-center mt-3">{apiError}</p>}
         </div>
       </div>
     );
-  }
-
-  if (gs.phase === 'lobby') {
+  } else if (gs.phase === 'lobby') {
     const isMe = myPlayerId !== null && gs.players[myPlayerId];
-    return (
+    content = (
       <div className="min-h-screen bg-gradient-to-br from-purple-600 to-blue-600 p-4">
         <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-2xl p-6 sm:p-8">
-          <h1 className="text-3xl font-bold text-center mb-2 text-purple-600">Спорим, не сможешь!</h1>
+          <h1 className="text-3xl font-bold text-center mb-2 text-purple-600">{t(lang, 'title')}</h1>
           <p className="text-center text-gray-600 mb-6">
-            Каждый игрок сканирует свой QR-код (или нажимает на своё имя ниже) на своём телефоне. Начать игру, когда все в сборе, может только хост.
+            {t(lang, 'lobbyIntro')}
           </p>
 
           {isMe ? (
             <div className="bg-green-50 border-2 border-green-400 rounded-lg p-4 mb-6 text-center">
-              <p className="font-bold text-green-700">Вы вошли как {gs.players[myPlayerId].name} ✅</p>
+              <p className="font-bold text-green-700">{t(lang, 'youAreIn', gs.players[myPlayerId].name)}</p>
             </div>
           ) : renderJoinBar()}
 
@@ -1212,7 +1314,7 @@ const BetYouCantGame = () => {
                 <p className="font-semibold mb-2">{p.name}</p>
                 <img
                   src={getQrImageUrl(getShareUrl(p.id))}
-                  alt={`QR-код для ${p.name}`}
+                  alt={t(lang, 'qrAlt', p.name)}
                   className="mx-auto mb-2 rounded"
                   width={140}
                   height={140}
@@ -1221,7 +1323,7 @@ const BetYouCantGame = () => {
                   onClick={() => copyLink(p.id)}
                   className="w-full mb-2 px-3 py-1.5 bg-purple-100 text-purple-700 text-sm font-semibold rounded-lg hover:bg-purple-200"
                 >
-                  {copiedId === p.id ? 'Скопировано ✓' : 'Скопировать ссылку'}
+                  {copiedId === p.id ? t(lang, 'copied') : t(lang, 'copyLink')}
                 </button>
                 <p className="text-xs text-gray-500 break-all">{getShareUrl(p.id)}</p>
               </div>
@@ -1233,32 +1335,30 @@ const BetYouCantGame = () => {
               onClick={startTheGame}
               className="w-full bg-purple-600 text-white py-3 rounded-lg font-bold text-lg hover:bg-purple-700 transition"
             >
-              Начать игру ▶
+              {t(lang, 'startGame')}
             </button>
           ) : (
             <div className="w-full bg-gray-100 text-gray-600 py-3 rounded-lg font-semibold text-center">
-              Ожидание, пока хост начнёт игру…
+              {t(lang, 'waitingHostStart')}
             </div>
           )}
           {apiError && <p className="text-red-600 text-sm text-center mt-3">{apiError}</p>}
           <p className="text-xs text-gray-400 text-center mt-4">
-            Игроки должны быть в той же Wi-Fi сети, что и сервер (или иметь доступ к его адресу через интернет).
+            {t(lang, 'sameNetworkNote')}
           </p>
         </div>
       </div>
     );
-  }
-
-  if (gs.phase === 'gameOver') {
+  } else if (gs.phase === 'gameOver') {
     const rankedPlayers = [...gs.players].sort(byMoneyThenName);
     const winner = rankedPlayers[0];
-    return (
+    content = (
       <div className="min-h-screen bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center p-4">
         <div className="bg-white rounded-xl shadow-2xl p-8 max-w-2xl w-full">
           <div className="text-center mb-8">
             <div className="text-6xl mb-4">🏆</div>
-            <h1 className="text-4xl font-bold text-gray-800 mb-2">Игра окончена!</h1>
-            <h2 className="text-2xl text-purple-600">Победитель: {winner.name}</h2>
+            <h1 className="text-4xl font-bold text-gray-800 mb-2">{t(lang, 'gameOverTitle')}</h1>
+            <h2 className="text-2xl text-purple-600">{t(lang, 'winnerLabel', winner.name)}</h2>
           </div>
 
           <div className="space-y-3">
@@ -1278,293 +1378,300 @@ const BetYouCantGame = () => {
             onClick={() => window.location.href = window.location.origin + window.location.pathname}
             className="w-full mt-8 bg-purple-600 text-white py-3 rounded-lg font-bold hover:bg-purple-700 transition"
           >
-            Играть снова
+            {t(lang, 'playAgain')}
           </button>
+        </div>
+      </div>
+    );
+  } else {
+    const currentTask = currentTaskObject(gs);
+    const currentPlayer = gs.players[gs.currentPlayerIndex];
+    const timeLeft = gs.gameEndsAt ? Math.max(0, Math.round((gs.gameEndsAt - now) / 1000)) : 0;
+    const challengeTimeLeft = gs.performEndsAt
+      ? Math.max(0, Math.ceil((gs.performEndsAt - now) / 1000))
+      : (currentTask ? currentTask.time : null);
+    const iAmCurrent = myPlayerId === gs.currentPlayerIndex;
+    const otherPlayers = gs.players.filter((_, i) => i !== gs.currentPlayerIndex);
+    const betsCount = gs.betsCount || 0;
+    const betPlacedBy = gs.betPlacedBy || [];
+    const betsNeeded = gs.players.length - 1;
+    const myBet = myPlayerId !== null ? (gs.bets || {})[myPlayerId] : undefined;
+
+    content = (
+      <div className="min-h-screen bg-gradient-to-br from-blue-500 to-purple-600 p-4">
+        <div className="max-w-3xl mx-auto">
+          <div className="bg-white rounded-xl shadow-2xl p-4 sm:p-6 mb-4">
+            <div className="flex flex-wrap justify-between items-center gap-3">
+              <h1 className="text-2xl sm:text-3xl font-bold text-purple-600">{t(lang, 'title')}</h1>
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <span>⏱️</span>
+                  <span className="font-bold text-lg">{formatTime(timeLeft)}</span>
+                </div>
+                <button
+                  onClick={endGame}
+                  disabled={!iAmCurrent}
+                  title={iAmCurrent ? undefined : t(lang, 'endGameTooltip', currentPlayer.name)}
+                  className="px-3 py-1.5 bg-red-500 text-white text-sm rounded-lg hover:bg-red-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                >
+                  {t(lang, 'endGame')}
+                </button>
+              </div>
+            </div>
+            {renderJoinBar()}
+            {apiError && <p className="text-red-600 text-sm text-center mt-2">{apiError}</p>}
+          </div>
+
+          <div className="bg-white rounded-xl shadow-2xl p-3 mb-4 space-y-1">
+            {[...gs.players].sort(byMoneyThenName).map(player => (
+              <div
+                key={player.id}
+                className={`flex items-center justify-between px-3 py-2 rounded-lg ${player.id === gs.currentPlayerIndex ? 'bg-yellow-50 ring-2 ring-yellow-400' : 'bg-gray-50'} ${myPlayerId === player.id ? 'border-2 border-purple-500' : ''}`}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-sm">👤</span>
+                  <span className="font-semibold text-sm truncate">{player.name}</span>
+                  {player.id === gs.currentPlayerIndex && (
+                    <span className="text-xs text-yellow-600 font-semibold shrink-0">{t(lang, 'current')}</span>
+                  )}
+                </div>
+                <span className="font-bold text-green-600 shrink-0">€{player.money}</span>
+              </div>
+            ))}
+          </div>
+
+          {gs.phase === 'playing' && (
+            <div className="bg-white rounded-xl shadow-xl p-8 text-center">
+              <h2 className="text-2xl font-bold mb-4">
+                {iAmCurrent ? t(lang, 'yourTurn') : t(lang, 'turnOf', currentPlayer.name)}
+              </h2>
+
+              {gs.diceValue && (
+                <div className="mb-6">
+                  <div className="text-7xl mb-2">{diceFaces[gs.diceValue - 1]}</div>
+                  <p className="text-xl">{t(lang, 'rolled', gs.diceValue)}</p>
+                </div>
+              )}
+
+              <button
+                onClick={rollDice}
+                disabled={gs.diceValue !== null || !iAmCurrent}
+                className="px-8 py-4 bg-purple-600 text-white text-xl font-bold rounded-lg hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition"
+              >
+                {t(lang, 'rollDice')}
+              </button>
+              {!iAmCurrent && (
+                <p className="text-sm text-gray-500 mt-4">{t(lang, 'waitingRoll', currentPlayer.name)}</p>
+              )}
+            </div>
+          )}
+
+          {gs.phase === 'blindBet' && (
+            <div className="bg-white rounded-xl shadow-xl p-8">
+              <h2 className="text-2xl font-bold mb-4 text-center">{t(lang, 'blindBetTitle')}</h2>
+              <p className="text-center mb-4 text-lg">
+                {iAmCurrent ? t(lang, 'chooseChallengeType') : t(lang, 'chooseChallengeTypeOther', currentPlayer.name)}
+              </p>
+              <p className="text-center mb-6 text-gray-600">
+                {t(lang, 'blindBetWarning')}
+              </p>
+
+              <div className="flex gap-4 justify-center">
+                <button
+                  onClick={() => selectBlindBetType('skill')}
+                  className="px-8 py-4 bg-blue-600 text-white text-xl font-bold rounded-lg hover:bg-blue-700"
+                >
+                  {t(lang, 'skillTaskBtn')}
+                </button>
+                <button
+                  onClick={() => selectBlindBetType('mental')}
+                  className="px-8 py-4 bg-green-600 text-white text-xl font-bold rounded-lg hover:bg-green-700"
+                >
+                  {t(lang, 'mentalTaskBtn')}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {(gs.phase === 'betting' || gs.phase === 'blindBetting') && (
+            <div className="bg-white rounded-xl shadow-xl p-8">
+              {gs.phase === 'betting' && currentTask && (
+                <>
+                  <h2 className="text-2xl font-bold mb-4 text-center">
+                    {currentTask.type === 'skill' ? t(lang, 'skillChallenge') : t(lang, 'mentalChallenge')}
+                  </h2>
+                  <div className="bg-purple-50 p-6 rounded-lg mb-6">
+                    <p className="text-xl font-semibold text-center mb-2">{currentTask.text}</p>
+                    <p className="text-center text-gray-600">{t(lang, 'timeLimit', currentTask.time)}</p>
+                  </div>
+                  {currentTask.diagram && renderDiagram(currentTask.diagram, lang)}
+                </>
+              )}
+
+              {gs.phase === 'blindBetting' && (
+                <>
+                  <h2 className="text-2xl font-bold mb-4 text-center">{t(lang, 'blindBettingTitle')}</h2>
+                  <p className="text-center mb-2 text-lg">
+                    {currentPlayer.name} {t(lang, 'hasChosen')}{' '}
+                    <span className="font-bold text-purple-600">
+                      {gs.blindBetTaskType === 'skill' ? t(lang, 'skillChallengeLower') : t(lang, 'mentalChallengeLower')}
+                    </span>
+                  </p>
+                  <p className="text-center mb-6 text-red-600 font-semibold">{t(lang, 'blindBettingWarning')}</p>
+                </>
+              )}
+
+              {iAmCurrent ? (
+                <div className="bg-blue-50 p-4 rounded-lg mb-6 text-center">
+                  <p className="font-semibold">{t(lang, 'waitingOnBets', betsCount, betsNeeded)}</p>
+                </div>
+              ) : myPlayerId === null ? null : myBet ? (
+                <div className="bg-green-50 border-2 border-green-400 p-4 rounded-lg mb-6 text-center">
+                  <p className="font-semibold text-green-700">
+                    {t(lang, 'youBet', myBet.amount, myBet.willSucceed ? t(lang, 'success') : t(lang, 'fail'))}
+                  </p>
+                </div>
+              ) : (
+                <BetForm player={gs.players[myPlayerId]} onBet={placeBet} error={betError} lang={lang} />
+              )}
+
+              <div className="bg-gray-50 p-4 rounded-lg mb-6">
+                <h3 className="font-bold text-lg mb-2">{t(lang, 'betsPlacedCount', betsCount, betsNeeded)}</h3>
+                <p className="text-xs text-gray-400 mb-2">{t(lang, 'betsSecretNote')}</p>
+                {otherPlayers.map(player => {
+                  const hasBet = betPlacedBy.includes(player.id);
+                  return (
+                    <p key={player.id} className="text-gray-700 text-sm">
+                      {player.name}: {hasBet ? t(lang, 'betPlaced') : t(lang, 'thinking')}
+                    </p>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={gs.phase === 'betting' ? startChallenge : revealBlindTask}
+                disabled={betsCount < betsNeeded || !iAmCurrent}
+                className="w-full py-3 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700 disabled:bg-gray-400"
+              >
+                {gs.phase === 'betting' ? t(lang, 'allBetsStartChallenge') : t(lang, 'allBetsRevealChallenge')}
+              </button>
+              {betsCount >= betsNeeded && !iAmCurrent && (
+                <p className="text-xs text-gray-500 text-center mt-2">{t(lang, 'waitingContinue', currentPlayer.name)}</p>
+              )}
+            </div>
+          )}
+
+          {gs.phase === 'revealBlindTask' && currentTask && (
+            <div className="bg-white rounded-xl shadow-xl p-8">
+              <h2 className="text-2xl font-bold mb-4 text-center">{t(lang, 'challengeRevealed')}</h2>
+
+              <div className="bg-yellow-100 border-4 border-yellow-400 p-6 rounded-lg mb-6">
+                <p className="text-2xl font-bold text-center mb-2">{currentTask.text}</p>
+                <p className="text-center text-gray-700 text-lg">⏱️ {t(lang, 'timeLimit', currentTask.time)}</p>
+              </div>
+
+              {currentTask.diagram && renderDiagram(currentTask.diagram, lang)}
+
+              <div className="bg-blue-50 p-4 rounded-lg mb-6">
+                <h3 className="font-bold text-lg mb-2">{t(lang, 'betsPlacedTitle')}</h3>
+                <p className="text-xs text-gray-400 mb-2">{t(lang, 'betsSecretNote')}</p>
+                {otherPlayers.map(player => {
+                  const hasBet = betPlacedBy.includes(player.id);
+                  return (
+                    <p key={player.id} className="text-gray-700">
+                      {player.name}: {hasBet ? t(lang, 'betPlaced') : '—'}
+                    </p>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={startChallenge}
+                disabled={!iAmCurrent}
+                className="w-full py-4 bg-purple-600 text-white font-bold text-lg rounded-lg hover:bg-purple-700 disabled:bg-gray-400"
+              >
+                {t(lang, 'startChallengeBtn')}
+              </button>
+              {!iAmCurrent && (
+                <p className="text-xs text-gray-500 text-center mt-2">{t(lang, 'waitingContinue', currentPlayer.name)}</p>
+              )}
+            </div>
+          )}
+
+          {gs.phase === 'performing' && currentTask && (
+            <div className="bg-white rounded-xl shadow-xl p-8">
+              <h2 className="text-2xl font-bold mb-4 text-center">
+                {iAmCurrent ? t(lang, 'youPerforming') : t(lang, 'otherPerforming', currentPlayer.name)}
+              </h2>
+
+              <div className="bg-yellow-50 p-6 rounded-lg mb-6">
+                <p className="text-xl font-semibold text-center mb-2">{currentTask.text}</p>
+                <p className="text-center text-gray-600">
+                  {challengeTimeLeft !== null ? t(lang, 'secondsLeft', challengeTimeLeft) : t(lang, 'timeLimit', currentTask.time)}
+                </p>
+              </div>
+
+              {!gs.showResults && (
+                <>
+                  <div className="text-center mb-6">
+                    <p className="text-lg mb-2">{t(lang, 'didSucceed', currentPlayer.name)}</p>
+                    <p className="text-xs text-gray-400">{t(lang, 'anyoneCanJudge')}</p>
+                  </div>
+
+                  <div className="flex gap-4 justify-center">
+                    <button
+                      onClick={() => recordResult(true)}
+                      className="px-12 py-4 bg-green-500 text-white text-xl font-bold rounded-lg hover:bg-green-600"
+                    >
+                      {t(lang, 'successBtn')}
+                    </button>
+                    <button
+                      onClick={() => recordResult(false)}
+                      className="px-12 py-4 bg-red-500 text-white text-xl font-bold rounded-lg hover:bg-red-600"
+                    >
+                      {t(lang, 'failedBtn')}
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {gs.showResults && (
+                <div className="mt-2 p-4 bg-blue-50 rounded-lg">
+                  <h3 className="font-bold text-lg mb-2">{t(lang, 'resultsTitle')}</h3>
+                  <p className="text-xl mb-2">{t(lang, 'taskLabel', gs.taskSuccess ? t(lang, 'taskCompleted') : t(lang, 'taskFailed'))}</p>
+                  {Object.entries(gs.bets || {}).map(([playerId, bet]) => {
+                    const player = gs.players[parseInt(playerId)];
+                    const won = bet.willSucceed === gs.taskSuccess;
+                    return (
+                      <p key={playerId} className={won ? 'text-green-600' : 'text-red-600'}>
+                        {player.name}: {won ? `+€${bet.amount}` : `-€${bet.amount}`}
+                      </p>
+                    );
+                  })}
+                  <button
+                    onClick={nextTurn}
+                    disabled={!iAmCurrent}
+                    className="w-full mt-4 py-3 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700 disabled:bg-gray-400"
+                  >
+                    {t(lang, 'continueBtn')}
+                  </button>
+                  {!iAmCurrent && (
+                    <p className="text-xs text-gray-500 text-center mt-2">{t(lang, 'waitingContinue', currentPlayer.name)}</p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     );
   }
 
-  const currentTask = currentTaskObject(gs);
-  const currentPlayer = gs.players[gs.currentPlayerIndex];
-  const timeLeft = gs.gameEndsAt ? Math.max(0, Math.round((gs.gameEndsAt - now) / 1000)) : 0;
-  const challengeTimeLeft = gs.performEndsAt
-    ? Math.max(0, Math.ceil((gs.performEndsAt - now) / 1000))
-    : (currentTask ? currentTask.time : null);
-  const iAmCurrent = myPlayerId === gs.currentPlayerIndex;
-  const otherPlayers = gs.players.filter((_, i) => i !== gs.currentPlayerIndex);
-  const betsCount = gs.betsCount || 0;
-  const betPlacedBy = gs.betPlacedBy || [];
-  const betsNeeded = gs.players.length - 1;
-  const myBet = myPlayerId !== null ? (gs.bets || {})[myPlayerId] : undefined;
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-500 to-purple-600 p-4">
-      <div className="max-w-3xl mx-auto">
-        <div className="bg-white rounded-xl shadow-2xl p-4 sm:p-6 mb-4">
-          <div className="flex flex-wrap justify-between items-center gap-3">
-            <h1 className="text-2xl sm:text-3xl font-bold text-purple-600">Спорим, не сможешь!</h1>
-            <div className="flex items-center gap-3 flex-wrap">
-              <div className="flex items-center gap-2">
-                <span>⏱️</span>
-                <span className="font-bold text-lg">{formatTime(timeLeft)}</span>
-              </div>
-              <button
-                onClick={endGame}
-                disabled={!iAmCurrent}
-                title={iAmCurrent ? undefined : `Завершить игру может только ${currentPlayer.name} (текущий игрок)`}
-                className="px-3 py-1.5 bg-red-500 text-white text-sm rounded-lg hover:bg-red-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
-              >
-                Завершить игру
-              </button>
-            </div>
-          </div>
-          {renderJoinBar()}
-          {apiError && <p className="text-red-600 text-sm text-center mt-2">{apiError}</p>}
-        </div>
-
-        <div className="bg-white rounded-xl shadow-2xl p-3 mb-4 space-y-1">
-          {[...gs.players].sort(byMoneyThenName).map(player => (
-            <div
-              key={player.id}
-              className={`flex items-center justify-between px-3 py-2 rounded-lg ${player.id === gs.currentPlayerIndex ? 'bg-yellow-50 ring-2 ring-yellow-400' : 'bg-gray-50'} ${myPlayerId === player.id ? 'border-2 border-purple-500' : ''}`}
-            >
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="text-sm">👤</span>
-                <span className="font-semibold text-sm truncate">{player.name}</span>
-                {player.id === gs.currentPlayerIndex && (
-                  <span className="text-xs text-yellow-600 font-semibold shrink-0">(ходит)</span>
-                )}
-              </div>
-              <span className="font-bold text-green-600 shrink-0">€{player.money}</span>
-            </div>
-          ))}
-        </div>
-
-        {gs.phase === 'playing' && (
-          <div className="bg-white rounded-xl shadow-xl p-8 text-center">
-            <h2 className="text-2xl font-bold mb-4">
-              {iAmCurrent ? 'Ваш ход!' : `Ход игрока ${currentPlayer.name}`}
-            </h2>
-
-            {gs.diceValue && (
-              <div className="mb-6">
-                <div className="text-7xl mb-2">{diceFaces[gs.diceValue - 1]}</div>
-                <p className="text-xl">Выпало: {gs.diceValue}</p>
-              </div>
-            )}
-
-            <button
-              onClick={rollDice}
-              disabled={gs.diceValue !== null || !iAmCurrent}
-              className="px-8 py-4 bg-purple-600 text-white text-xl font-bold rounded-lg hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition"
-            >
-              Бросить кубик
-            </button>
-            {!iAmCurrent && (
-              <p className="text-sm text-gray-500 mt-4">Ожидание, пока {currentPlayer.name} бросит кубик…</p>
-            )}
-          </div>
-        )}
-
-        {gs.phase === 'blindBet' && (
-          <div className="bg-white rounded-xl shadow-xl p-8">
-            <h2 className="text-2xl font-bold mb-4 text-center">🎲 Слепая ставка!</h2>
-            <p className="text-center mb-4 text-lg">
-              {iAmCurrent ? 'Выберите тип задания:' : `${currentPlayer.name}, выберите тип задания:`}
-            </p>
-            <p className="text-center mb-6 text-gray-600">
-              Остальные игроки сделают ставки ДО того, как узнают задание!
-            </p>
-
-            <div className="flex gap-4 justify-center">
-              <button
-                onClick={() => selectBlindBetType('skill')}
-                className="px-8 py-4 bg-blue-600 text-white text-xl font-bold rounded-lg hover:bg-blue-700"
-              >
-                🏃 На ловкость
-              </button>
-              <button
-                onClick={() => selectBlindBetType('mental')}
-                className="px-8 py-4 bg-green-600 text-white text-xl font-bold rounded-lg hover:bg-green-700"
-              >
-                🧠 На смекалку
-              </button>
-            </div>
-          </div>
-        )}
-
-        {(gs.phase === 'betting' || gs.phase === 'blindBetting') && (
-          <div className="bg-white rounded-xl shadow-xl p-8">
-            {gs.phase === 'betting' && currentTask && (
-              <>
-                <h2 className="text-2xl font-bold mb-4 text-center">
-                  {currentTask.type === 'skill' ? '🏃 Испытание на ловкость' : '🧠 Испытание на смекалку'}
-                </h2>
-                <div className="bg-purple-50 p-6 rounded-lg mb-6">
-                  <p className="text-xl font-semibold text-center mb-2">{currentTask.text}</p>
-                  <p className="text-center text-gray-600">Лимит времени: {currentTask.time} секунд</p>
-                </div>
-                {currentTask.diagram && renderDiagram(currentTask.diagram)}
-              </>
-            )}
-
-            {gs.phase === 'blindBetting' && (
-              <>
-                <h2 className="text-2xl font-bold mb-4 text-center">🎲 Слепые ставки!</h2>
-                <p className="text-center mb-2 text-lg">
-                  {currentPlayer.name} выбрал{' '}
-                  <span className="font-bold text-purple-600">
-                    {gs.blindBetTaskType === 'skill' ? 'испытание на ловкость 🏃' : 'испытание на смекалку 🧠'}
-                  </span>
-                </p>
-                <p className="text-center mb-6 text-red-600 font-semibold">⚠️ Сделайте ставки, НЕ зная задания!</p>
-              </>
-            )}
-
-            {iAmCurrent ? (
-              <div className="bg-blue-50 p-4 rounded-lg mb-6 text-center">
-                <p className="font-semibold">Ожидаем ставки: {betsCount}/{betsNeeded}</p>
-              </div>
-            ) : myPlayerId === null ? null : myBet ? (
-              <div className="bg-green-50 border-2 border-green-400 p-4 rounded-lg mb-6 text-center">
-                <p className="font-semibold text-green-700">
-                  Вы поставили €{myBet.amount} на {myBet.willSucceed ? 'УСПЕХ ✓' : 'ПРОВАЛ ✗'} — ждём остальных.
-                </p>
-              </div>
-            ) : (
-              <BetForm player={gs.players[myPlayerId]} onBet={placeBet} error={betError} />
-            )}
-
-            <div className="bg-gray-50 p-4 rounded-lg mb-6">
-              <h3 className="font-bold text-lg mb-2">Ставки сделаны ({betsCount}/{betsNeeded}):</h3>
-              <p className="text-xs text-gray-400 mb-2">Ставки останутся в секрете до объявления результата.</p>
-              {otherPlayers.map(player => {
-                const hasBet = betPlacedBy.includes(player.id);
-                return (
-                  <p key={player.id} className="text-gray-700 text-sm">
-                    {player.name}: {hasBet ? '✓ ставка сделана' : 'думает…'}
-                  </p>
-                );
-              })}
-            </div>
-
-            <button
-              onClick={gs.phase === 'betting' ? startChallenge : revealBlindTask}
-              disabled={betsCount < betsNeeded || !iAmCurrent}
-              className="w-full py-3 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700 disabled:bg-gray-400"
-            >
-              {gs.phase === 'betting' ? 'Все поставили — начать испытание!' : 'Все поставили — раскрыть задание!'}
-            </button>
-            {betsCount >= betsNeeded && !iAmCurrent && (
-              <p className="text-xs text-gray-500 text-center mt-2">Ожидание, пока {currentPlayer.name} продолжит…</p>
-            )}
-          </div>
-        )}
-
-        {gs.phase === 'revealBlindTask' && currentTask && (
-          <div className="bg-white rounded-xl shadow-xl p-8">
-            <h2 className="text-2xl font-bold mb-4 text-center">🎉 Задание раскрыто!</h2>
-
-            <div className="bg-yellow-100 border-4 border-yellow-400 p-6 rounded-lg mb-6">
-              <p className="text-2xl font-bold text-center mb-2">{currentTask.text}</p>
-              <p className="text-center text-gray-700 text-lg">⏱️ Лимит времени: {currentTask.time} секунд</p>
-            </div>
-
-            {currentTask.diagram && renderDiagram(currentTask.diagram)}
-
-            <div className="bg-blue-50 p-4 rounded-lg mb-6">
-              <h3 className="font-bold text-lg mb-2">Ставки сделаны:</h3>
-              <p className="text-xs text-gray-400 mb-2">Ставки останутся в секрете до объявления результата.</p>
-              {otherPlayers.map(player => {
-                const hasBet = betPlacedBy.includes(player.id);
-                return (
-                  <p key={player.id} className="text-gray-700">
-                    {player.name}: {hasBet ? '✓ ставка сделана' : '—'}
-                  </p>
-                );
-              })}
-            </div>
-
-            <button
-              onClick={startChallenge}
-              disabled={!iAmCurrent}
-              className="w-full py-4 bg-purple-600 text-white font-bold text-lg rounded-lg hover:bg-purple-700 disabled:bg-gray-400"
-            >
-              Начать испытание! 🎯
-            </button>
-            {!iAmCurrent && (
-              <p className="text-xs text-gray-500 text-center mt-2">Ожидание, пока {currentPlayer.name} продолжит…</p>
-            )}
-          </div>
-        )}
-
-        {gs.phase === 'performing' && currentTask && (
-          <div className="bg-white rounded-xl shadow-xl p-8">
-            <h2 className="text-2xl font-bold mb-4 text-center">
-              {iAmCurrent ? "Ты выполняешь испытание!" : `${currentPlayer.name} выполняет испытание!`}
-            </h2>
-
-            <div className="bg-yellow-50 p-6 rounded-lg mb-6">
-              <p className="text-xl font-semibold text-center mb-2">{currentTask.text}</p>
-              <p className="text-center text-gray-600">
-                {challengeTimeLeft !== null ? `осталось ${challengeTimeLeft} с` : `Лимит времени: ${currentTask.time} секунд`}
-              </p>
-            </div>
-
-            {!gs.showResults && (
-              <>
-                <div className="text-center mb-6">
-                  <p className="text-lg mb-2">Справился ли {currentPlayer.name}?</p>
-                  <p className="text-xs text-gray-400">Судить может любой — вместе нажмите на результат.</p>
-                </div>
-
-                <div className="flex gap-4 justify-center">
-                  <button
-                    onClick={() => recordResult(true)}
-                    className="px-12 py-4 bg-green-500 text-white text-xl font-bold rounded-lg hover:bg-green-600"
-                  >
-                    ✓ УСПЕХ
-                  </button>
-                  <button
-                    onClick={() => recordResult(false)}
-                    className="px-12 py-4 bg-red-500 text-white text-xl font-bold rounded-lg hover:bg-red-600"
-                  >
-                    ✗ ПРОВАЛ
-                  </button>
-                </div>
-              </>
-            )}
-
-            {gs.showResults && (
-              <div className="mt-2 p-4 bg-blue-50 rounded-lg">
-                <h3 className="font-bold text-lg mb-2">Результаты:</h3>
-                <p className="text-xl mb-2">Задание: {gs.taskSuccess ? '✓ Выполнено!' : '✗ Провалено'}</p>
-                {Object.entries(gs.bets || {}).map(([playerId, bet]) => {
-                  const player = gs.players[parseInt(playerId)];
-                  const won = bet.willSucceed === gs.taskSuccess;
-                  return (
-                    <p key={playerId} className={won ? 'text-green-600' : 'text-red-600'}>
-                      {player.name}: {won ? `+€${bet.amount}` : `-€${bet.amount}`}
-                    </p>
-                  );
-                })}
-                <button
-                  onClick={nextTurn}
-                  disabled={!iAmCurrent}
-                  className="w-full mt-4 py-3 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700 disabled:bg-gray-400"
-                >
-                  Продолжить ▶
-                </button>
-                {!iAmCurrent && (
-                  <p className="text-xs text-gray-500 text-center mt-2">Ожидание, пока {currentPlayer.name} продолжит…</p>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
+    <>
+      <LanguageSwitcher lang={lang} setLang={setLang} />
+      {content}
+    </>
   );
 };
 

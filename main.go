@@ -40,23 +40,23 @@ type Bet struct {
 }
 
 type GameState struct {
-	Phase             string        `json:"phase"`
-	Players           []Player      `json:"players"`
-	CurrentPlayerIdx  int           `json:"currentPlayerIndex"`
-	DiceValue         *int          `json:"diceValue"`
-	CurrentTaskType   *string       `json:"currentTaskType"`
-	CurrentTaskIndex  *int          `json:"currentTaskIndex"`
-	Bets              map[int]Bet   `json:"bets"`
-	BlindBetTaskType  *string       `json:"blindBetTaskType"`
-	TaskSuccess       *bool         `json:"taskSuccess"`
-	ShowResults       bool          `json:"showResults"`
-	UsedSkillTasks    []int         `json:"usedSkillTasks"`
-	UsedMentalTasks   []int         `json:"usedMentalTasks"`
-	GameTimeMinutes   int           `json:"gameTimeMinutes"`
-	GameEndsAt        *int64        `json:"gameEndsAt"`
-	PerformEndsAt     *int64        `json:"performEndsAt"`
-	BetsCount         int           `json:"betsCount"`
-	BetPlacedBy       []int         `json:"betPlacedBy"`
+	Phase            string      `json:"phase"`
+	Players          []Player    `json:"players"`
+	CurrentPlayerIdx int         `json:"currentPlayerIndex"`
+	DiceValue        *int        `json:"diceValue"`
+	CurrentTaskType  *string     `json:"currentTaskType"`
+	CurrentTaskIndex *int        `json:"currentTaskIndex"`
+	Bets             map[int]Bet `json:"bets"`
+	BlindBetTaskType *string     `json:"blindBetTaskType"`
+	TaskSuccess      *bool       `json:"taskSuccess"`
+	ShowResults      bool        `json:"showResults"`
+	UsedSkillTasks   []int       `json:"usedSkillTasks"`
+	UsedMentalTasks  []int       `json:"usedMentalTasks"`
+	GameTimeMinutes  int         `json:"gameTimeMinutes"`
+	GameEndsAt       *int64      `json:"gameEndsAt"`
+	PerformEndsAt    *int64      `json:"performEndsAt"`
+	BetsCount        int         `json:"betsCount"`
+	BetPlacedBy      []int       `json:"betPlacedBy"`
 }
 
 type Game struct {
@@ -141,7 +141,7 @@ func respondState(w http.ResponseWriter, r *http.Request, state GameState) {
 func requireCurrentPlayer(w http.ResponseWriter, r *http.Request, state GameState) bool {
 	viewerID := viewerFromRequest(r)
 	if viewerID == nil || *viewerID != state.CurrentPlayerIdx {
-		writeErr(w, 403, "это может сделать только текущий игрок")
+		writeErrKey(w, r, 403, "onlyCurrentPlayer")
 		return false
 	}
 	return true
@@ -177,6 +177,45 @@ func writeErr(w http.ResponseWriter, code int, msg string) {
 	json.NewEncoder(w).Encode(map[string]string{"error": msg})
 }
 
+type errMsg struct{ en, ru string }
+
+var errMessages = map[string]errMsg{
+	"gameNotFound":       {"game not found", "игра не найдена"},
+	"badBody":            {"bad request body", "некорректное тело запроса"},
+	"badNumPlayers":      {"invalid number of players", "недопустимое количество игроков"},
+	"onlyHostCanStart":   {"only the host can start the game", "начать игру может только хост"},
+	"onlyCurrentPlayer":  {"only the current player can do this", "это может сделать только текущий игрок"},
+	"invalidType":        {"invalid type", "недопустимый тип"},
+	"blindTypeNotChosen": {"blind bet task type not chosen", "тип задания для слепой ставки не выбран"},
+	"badRequest":         {"invalid request", "некорректный запрос"},
+	"invalidPlayer":      {"invalid player", "недопустимый игрок"},
+	"currentPlayerNoBet": {"the current player can't place a bet", "текущий игрок не может делать ставки"},
+	"betTooMuch":         {"can't bet more than half your money", "нельзя ставить больше половины своих денег"},
+	"methodNotAllowed":   {"method not allowed", "метод не разрешён"},
+	"unknownRoute":       {"unknown route", "неизвестный маршрут"},
+}
+
+// writeErrKey writes an error message in the language requested via ?lang=ru
+// (defaults to English), looking up msg by key from errMessages.
+func writeErrKey(w http.ResponseWriter, r *http.Request, code int, key string) {
+	m, ok := errMessages[key]
+	msg := key
+	if ok {
+		msg = m.en
+		if r.URL.Query().Get("lang") == "ru" {
+			msg = m.ru
+		}
+	}
+	writeErr(w, code, msg)
+}
+
+func minBetMsg(lang string) string {
+	if lang == "ru" {
+		return fmt.Sprintf("минимальная ставка — %d", minBetAmount)
+	}
+	return fmt.Sprintf("must bet at least %d", minBetAmount)
+}
+
 func getGame(id string) (*Game, bool) {
 	gamesMu.Lock()
 	defer gamesMu.Unlock()
@@ -195,11 +234,11 @@ type createGameReq struct {
 func handleCreateGame(w http.ResponseWriter, r *http.Request) {
 	var req createGameReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeErr(w, 400, "некорректное тело запроса")
+		writeErrKey(w, r, 400, "badBody")
 		return
 	}
 	if req.NumPlayers < 2 || req.NumPlayers > 12 {
-		writeErr(w, 400, "недопустимое количество игроков")
+		writeErrKey(w, r, 400, "badNumPlayers")
 		return
 	}
 	if req.GameTimeMinutes <= 0 {
@@ -213,7 +252,11 @@ func handleCreateGame(w http.ResponseWriter, r *http.Request) {
 			name = req.PlayerNames[i]
 		}
 		if name == "" {
-			name = fmt.Sprintf("Игрок %d", i+1)
+			if r.URL.Query().Get("lang") == "ru" {
+				name = fmt.Sprintf("Игрок %d", i+1)
+			} else {
+				name = fmt.Sprintf("Player %d", i+1)
+			}
 		}
 		players[i] = Player{ID: i, Name: name, Money: 100, Position: 0}
 	}
@@ -251,7 +294,7 @@ func handleCreateGame(w http.ResponseWriter, r *http.Request) {
 func handleGetGame(w http.ResponseWriter, r *http.Request, id string) {
 	g, ok := getGame(id)
 	if !ok {
-		writeErr(w, 404, "игра не найдена")
+		writeErrKey(w, r, 404, "gameNotFound")
 		return
 	}
 	g.mu.Lock()
@@ -266,7 +309,7 @@ type startReq struct {
 func handleStart(w http.ResponseWriter, r *http.Request, id string) {
 	g, ok := getGame(id)
 	if !ok {
-		writeErr(w, 404, "игра не найдена")
+		writeErrKey(w, r, 404, "gameNotFound")
 		return
 	}
 	var req startReq
@@ -274,7 +317,7 @@ func handleStart(w http.ResponseWriter, r *http.Request, id string) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if req.AdminToken == "" || req.AdminToken != g.adminToken {
-		writeErr(w, 403, "начать игру может только хост")
+		writeErrKey(w, r, 403, "onlyHostCanStart")
 		return
 	}
 	if g.state.Phase == "lobby" {
@@ -288,7 +331,7 @@ func handleStart(w http.ResponseWriter, r *http.Request, id string) {
 func handleRoll(w http.ResponseWriter, r *http.Request, id string) {
 	g, ok := getGame(id)
 	if !ok {
-		writeErr(w, 404, "игра не найдена")
+		writeErrKey(w, r, 404, "gameNotFound")
 		return
 	}
 	g.mu.Lock()
@@ -350,13 +393,13 @@ type blindTypeReq struct {
 func handleBlindType(w http.ResponseWriter, r *http.Request, id string) {
 	g, ok := getGame(id)
 	if !ok {
-		writeErr(w, 404, "игра не найдена")
+		writeErrKey(w, r, 404, "gameNotFound")
 		return
 	}
 	var req blindTypeReq
 	json.NewDecoder(r.Body).Decode(&req)
 	if req.Type != "skill" && req.Type != "mental" {
-		writeErr(w, 400, "недопустимый тип")
+		writeErrKey(w, r, 400, "invalidType")
 		return
 	}
 	g.mu.Lock()
@@ -370,7 +413,7 @@ func handleBlindType(w http.ResponseWriter, r *http.Request, id string) {
 func handleReveal(w http.ResponseWriter, r *http.Request, id string) {
 	g, ok := getGame(id)
 	if !ok {
-		writeErr(w, 404, "игра не найдена")
+		writeErrKey(w, r, 404, "gameNotFound")
 		return
 	}
 	g.mu.Lock()
@@ -379,7 +422,7 @@ func handleReveal(w http.ResponseWriter, r *http.Request, id string) {
 		return
 	}
 	if g.state.BlindBetTaskType == nil {
-		writeErr(w, 400, "тип задания для слепой ставки не выбран")
+		writeErrKey(w, r, 400, "blindTypeNotChosen")
 		return
 	}
 	var idx int
@@ -402,7 +445,7 @@ type startChallengeReq struct {
 func handleStartChallenge(w http.ResponseWriter, r *http.Request, id string) {
 	g, ok := getGame(id)
 	if !ok {
-		writeErr(w, 404, "игра не найдена")
+		writeErrKey(w, r, 404, "gameNotFound")
 		return
 	}
 	var req startChallengeReq
@@ -430,32 +473,32 @@ type betReq struct {
 func handleBet(w http.ResponseWriter, r *http.Request, id string) {
 	g, ok := getGame(id)
 	if !ok {
-		writeErr(w, 404, "игра не найдена")
+		writeErrKey(w, r, 404, "gameNotFound")
 		return
 	}
 	var req betReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeErr(w, 400, "некорректный запрос")
+		writeErrKey(w, r, 400, "badRequest")
 		return
 	}
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
 	if req.PlayerID < 0 || req.PlayerID >= len(g.state.Players) {
-		writeErr(w, 400, "недопустимый игрок")
+		writeErrKey(w, r, 400, "invalidPlayer")
 		return
 	}
 	if req.PlayerID == g.state.CurrentPlayerIdx {
-		writeErr(w, 400, "текущий игрок не может делать ставки")
+		writeErrKey(w, r, 400, "currentPlayerNoBet")
 		return
 	}
 	player := g.state.Players[req.PlayerID]
 	if req.Amount < minBetAmount {
-		writeErr(w, 400, fmt.Sprintf("минимальная ставка — %d", minBetAmount))
+		writeErr(w, 400, minBetMsg(r.URL.Query().Get("lang")))
 		return
 	}
 	if req.Amount > player.Money/2 {
-		writeErr(w, 400, "нельзя ставить больше половины своих денег")
+		writeErrKey(w, r, 400, "betTooMuch")
 		return
 	}
 	g.state.Bets[req.PlayerID] = Bet{WillSucceed: req.WillSucceed, Amount: req.Amount}
@@ -469,7 +512,7 @@ type resultReq struct {
 func handleResult(w http.ResponseWriter, r *http.Request, id string) {
 	g, ok := getGame(id)
 	if !ok {
-		writeErr(w, 404, "игра не найдена")
+		writeErrKey(w, r, 404, "gameNotFound")
 		return
 	}
 	var req resultReq
@@ -504,7 +547,7 @@ func handleResult(w http.ResponseWriter, r *http.Request, id string) {
 func handleNextTurn(w http.ResponseWriter, r *http.Request, id string) {
 	g, ok := getGame(id)
 	if !ok {
-		writeErr(w, 404, "игра не найдена")
+		writeErrKey(w, r, 404, "gameNotFound")
 		return
 	}
 	g.mu.Lock()
@@ -529,7 +572,7 @@ func handleNextTurn(w http.ResponseWriter, r *http.Request, id string) {
 func handleEnd(w http.ResponseWriter, r *http.Request, id string) {
 	g, ok := getGame(id)
 	if !ok {
-		writeErr(w, 404, "игра не найдена")
+		writeErrKey(w, r, 404, "gameNotFound")
 		return
 	}
 	g.mu.Lock()
@@ -550,7 +593,7 @@ func apiHandler(w http.ResponseWriter, r *http.Request) {
 			handleCreateGame(w, r)
 			return
 		}
-		writeErr(w, 405, "метод не разрешён")
+		writeErrKey(w, r, 405, "methodNotAllowed")
 		return
 	}
 
@@ -587,7 +630,7 @@ func apiHandler(w http.ResponseWriter, r *http.Request) {
 	case action == "end" && r.Method == http.MethodPost:
 		handleEnd(w, r, id)
 	default:
-		writeErr(w, 404, "неизвестный маршрут")
+		writeErrKey(w, r, 404, "unknownRoute")
 	}
 }
 
@@ -622,7 +665,7 @@ func main() {
 			handleCreateGame(w, r)
 			return
 		}
-		writeErr(w, 405, "метод не разрешён")
+		writeErrKey(w, r, 405, "methodNotAllowed")
 	})
 	mux.HandleFunc("/api/games/", apiHandler)
 	mux.Handle("/", http.FileServer(http.FS(staticFS)))
@@ -635,4 +678,3 @@ func main() {
 	}
 	log.Fatal(http.ListenAndServe(addr, mux))
 }
-
