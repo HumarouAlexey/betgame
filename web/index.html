@@ -274,33 +274,18 @@ const BetForm = ({ player, onBet, error, lang }) => {
 
 const BetYouCantGame = () => {
   const skillTasks = [
-    { en: "Can the player fold an A4 sheet 4 times using only one hand?", ru: "Сможет ли игрок сложить лист А4 вчетверо, используя только одну руку?", time: 15, diagram: "fold" },
-    { en: "Can the player do a sit-up while keeping their legs straight and not losing balance? 2 successful tries out of 3", ru: "Сможет ли игрок сделать подъём корпуса, держа ноги прямыми и не теряя равновесия? 2 успешные попытки из 3", time: 30, diagram: "situp" },
-    { en: "Can the player catch a thrown pen with a half-liter bottle? Try to catch the pen in the bottle. Do this 2 times.", ru: "Сможет ли игрок поймать брошенную ручку бутылкой 0,5 литра? Нужно поймать ручку в бутылку. Сделать это 2 раза.", time: 30, diagram: "bottle" },
-    { en: "Can the player flip a plastic bottle so it lands upright? Try 3 times — you must succeed 2 out of 3 times.", ru: "Сможет ли игрок подбросить пластиковую бутылку так, чтобы она приземлилась вертикально? 3 попытки — нужно попасть 2 раза из 3.", time: 30, diagram: "bottleflip" },
-    { en: "Can the player jump rope for 15 seconds without tripping? Knees must be raised high — legs can be lifted too.", ru: "Сможет ли игрок прыгать через скакалку 15 секунд без запинки? Колени нужно поднимать высоко, ноги тоже можно поднимать.", time: 15, diagram: "jumprope" },
-    { en: "Can the player catch a flat-lying eraser by throwing it up and catching it after it bounces off the floor? 3 tries — you must catch it in your hand 2 times.", ru: "Сможет ли игрок поймать лежащий ластик, подбросив его вверх и поймав после удара об пол? 3 попытки — ластик должен оказаться в руке 2 раза.", time: 30, diagram: "eraser" },
-    { en: "Can the player throw a ball from the floor so it bounces off the floor and hits the ceiling? 3 tries to succeed at least once.", ru: "Сможет ли игрок бросить мяч от пола к потолку так, чтобы он отскочил от пола и ударился о потолок? 3 попытки, нужно попасть хотя бы раз.", time: 30, diagram: "throwceiling" },
-    { en: "Can the player stack 5 dice on top of each other, with the bottom one resting directly on the floor? 3 tries — must succeed 2 times.", ru: "Сможет ли игрок поставить 5 кубиков друг на друга, чтобы нижний лежал прямо на полу? 3 попытки — нужно успеть 2 раза.", time: 30, diagram: "dicestack" },
-    { en: "Can the player do 5 push-ups correctly? At the bottom you must pause without touching the floor. Each pause must last at least 2 seconds.", ru: "Сможет ли игрок правильно сделать 5 отжиманий? В нижней точке нужно останавливаться, не касаясь пола. Каждая остановка должна длиться не менее 2 секунд.", time: 30, diagram: "pushup" },
-    { en: "Can the player throw a glass of water onto the floor from a height of about 3 meters so the glass doesn't break on landing?", ru: "Сможет ли игрок бросить стакан с водой на пол с высоты около 3 метров так, чтобы стакан не разбился при приземлении?", time: 30, diagram: "glassthrow" },
-    { en: "Can the player get into a tabletop position without using their hands? (3 tries)", ru: "Сможет ли игрок встать в стойку «стол» без помощи рук? (3 попытки)", time: 30 },
-    { en: "Can the player crouch and jump for 15 seconds so their feet touch the TV screen while a channel is playing?", ru: "Сможет ли игрок 15 секунд приседать и подпрыгивать так, чтобы ногами коснуться экрана телевизора, на котором идёт передача по одному из каналов?", time: 15 },
-    { en: "Can the player answer one question so that everyone hears exactly what they know or want to share about what they're playing for? (15 seconds)", ru: "Сможет ли игрок дать один ответ на один вопрос так, чтобы все услышали именно то, что игрок знает или хочет рассказать о игре на что-то? (15 секунд)", time: 15 },
-    { en: "Can the player balance a cube on a dice cup so the dice bounce up and touch the cube? Start with 3 tries, but the throwing distance can be increased up to 1 meter.", ru: "Сможет ли игрок удержать кубик на стаканчике для игральных костей так, чтобы кости подпрыгивали и задевали кубик? Сначала 3 попытки, но дистанцию можно увеличить до 1 метра.", time: 30 },
-    { en: "Can the player go into a one-arm handstand from standing, then throw something using a chair without falling? (repeat 3 times)", ru: "Сможет ли игрок встать на одну руку из положения стоя, а затем бросить что-то, используя стул, не падая? (нужно повторить 3 раза)", time: 30 },
+    { en: "Can the player fold an A4 sheet 4 times using only one hand?", ru: "Сможет ли игрок сложить лист А4 вчетверо, используя только одну руку?", time: 15 },
+    { en: "Can the player catch a thrown pen with a half-liter bottle? Try to catch the pen in the bottle. Do this 2 times.", ru: "Сможет ли игрок поймать брошенную ручку бутылкой 0,5 литра? Нужно поймать ручку в бутылку. Сделать это 2 раза.", time: 30 },
+    { en: "Can the player flip a plastic bottle so it lands upright? Try 3 times — you must succeed 2 out of 3 times.", ru: "Сможет ли игрок подбросить пластиковую бутылку так, чтобы она приземлилась вертикально? 3 попытки — нужно попасть 2 раза из 3.", time: 30 },
+    { en: "Can the player catch a flat-lying eraser by throwing it up and catching it after it bounces off the floor? 3 tries — you must catch it in your hand 2 times.", ru: "Сможет ли игрок поймать лежащий ластик, подбросив его вверх и поймав после удара об пол? 3 попытки — ластик должен оказаться в руке 2 раза.", time: 30 },
+    { en: "Can the player throw a ball from the floor so it bounces off the floor and hits the ceiling? 3 tries to succeed at least once.", ru: "Сможет ли игрок бросить мяч от пола к потолку так, чтобы он отскочил от пола и ударился о потолок? 3 попытки, нужно попасть хотя бы раз.", time: 30 },
+    { en: "Can the player do 5 push-ups correctly? At the bottom you must pause without touching the floor. Each pause must last at least 2 seconds.", ru: "Сможет ли игрок правильно сделать 5 отжиманий? В нижней точке нужно останавливаться, не касаясь пола. Каждая остановка должна длиться не менее 2 секунд.", time: 30 },
     { en: "Can the player throw a die from 1 meter away so it lands standing on the table? (3 tries — the die must land standing on the table)", ru: "Сможет ли игрок бросить игральную кость с расстояния 1 метр так, чтобы она встала на стол? (3 попытки, кубик должен приземлиться стоя на столе)", time: 30 },
     { en: "Can the player write a text message in 30 seconds?", ru: "Сможет ли игрок написать SMS за 30 секунд?", time: 30 },
-    { en: "Can the player lift their feet onto a chair so it slides 0 to 2 meters away without falling? (3 tries)", ru: "Сможет ли игрок закинуть ноги на стул так, чтобы тот отъехал от 0 до 2 метров, не упав? (3 попытки)", time: 30 },
     { en: "Can the player say 6-digit numbers as words within 30 seconds? Must give 4 correct answers in 30 seconds.", ru: "Сможет ли игрок за 30 секунд назвать 6-значные числа словами? Нужно дать 4 правильных ответа за 30 секунд.", time: 30 },
-    { en: "Can the player fill a 0.5-liter bottle with water from 1 meter away, holding it properly? (the bottle must stand on the table, up to 5 tries)", ru: "Сможет ли игрок наполнить бутылку 0,5 литра водой с расстояния 1 метр, правильно её держа? (бутылка должна стоять на столе, до 5 попыток)", time: 30 },
-    { en: "Can the player jump side to side 5 times, hands on the floor and legs lifted, pausing in place each time? Each landing must be on the opposite side from the last.", ru: "Сможет ли игрок 5 раз перепрыгнуть слева направо, опираясь руками на пол и поднимая ноги, останавливаясь на месте? После каждой остановки нужно приземляться уже с другой стороны.", time: 30 },
-    { en: "Can the player throw a pen from the floor so it sticks into the ceiling, then catch it as it falls back? (3 tries — must catch it in hand 2 out of 4 times)", ru: "Сможет ли игрок бросить ручку с пола так, чтобы она воткнулась в потолок, а затем поймать её обратно? (3 попытки — ручка должна оказаться в руке 2 раза из 4)", time: 30 },
-    { en: "Can the player lie down and bounce their knees 3 times in a row? (3 tries — 1 successful in a row)", ru: "Сможет ли игрок лечь и подряд 3 раза подбросить колени? (3 попытки — 1 успешная подряд)", time: 30 },
     { en: "Can the player write 'Cha Cha Cha' 10 times on their phone?", ru: "Сможет ли игрок 10 раз написать «Ча-ча-ча» в телефоне? (можно писать по-английски 'Cha Cha Cha...')", time: 15 },
     { en: "Balance a marker on your forehead for 5 seconds", ru: "Удержать маркер на лбу 5 секунд", time: 30 },
     { en: "Bounce a ball and catch it 5 times in a row with one hand", ru: "Отбить мяч и поймать его 5 раз подряд одной рукой", time: 30 },
-    { en: "Stack 5 items on top of a motorcycle helmet", ru: "Уложить 5 предметов друг на друга на мотоциклетном шлеме", time: 60 },
     { en: "Stand on one leg for 30 seconds", ru: "Простоять на одной ноге 30 секунд", time: 30 },
     { en: "Do 10 jumping jacks while maintaining eye contact with a partner", ru: "Сделать 10 прыжков «звёздочка», не отводя взгляд от партнёра", time: 30 },
     { en: "Spin around 10 times and walk in a straight line", ru: "Покружиться 10 раз и пройти по прямой линии", time: 30 },
@@ -308,18 +293,15 @@ const BetYouCantGame = () => {
     { en: "Toss and catch a ball behind your back", ru: "Подбросить и поймать мяч за спиной", time: 30 },
     { en: "Balance a book on your head and walk 5 meters", ru: "Удержать книгу на голове и пройти 5 метров", time: 30 },
     { en: "Dance the Macarena perfectly", ru: "Идеально станцевать «Макарену»", time: 60 },
-    { en: "Draw a checkmark (✓) on the floor. Throw a ball so it bounces off the floor, hits the wall, and comes back to your hand", ru: "Нарисуй на полу галочку (✓). Брось мяч так, чтобы он отскочил от пола, ударился о стену и вернулся в руку", time: 30, diagram: "bounce" },
-    { en: "Can the player do 10 squats while holding a broom horizontally above their head? Balance must be kept throughout.", ru: "Сможет ли игрок сделать 10 приседаний, держа метлу горизонтально над головой? Нужно сохранять равновесие всё время.", time: 30 },
+    { en: "Draw a checkmark (✓) on the floor. Throw a ball so it bounces off the floor, hits the wall, and comes back to your hand", ru: "Нарисуй на полу галочку (✓). Брось мяч так, чтобы он отскочил от пола, ударился о стену и вернулся в руку", time: 30 },
     { en: "Can the player juggle 2 balls with one hand for 10 seconds without dropping them?", ru: "Сможет ли игрок жонглировать 2 мячами одной рукой 10 секунд, не уронив их?", time: 30 },
     { en: "Can the player walk backwards in a straight line for 10 meters with their eyes closed? Another player may only guide them verbally.", ru: "Сможет ли игрок пройти спиной вперёд по прямой 10 метров с закрытыми глазами? Другой игрок может подсказывать только голосом.", time: 45 },
     { en: "Can the player spin a pen on their finger for 5 seconds like a basketball?", ru: "Сможет ли игрок покрутить ручку на пальце 5 секунд, как баскетбольный мяч?", time: 30 },
-    { en: "Can the player do 5 burpees in 30 seconds?", ru: "Сможет ли игрок сделать 5 берпи за 30 секунд?", time: 30 },
     { en: "Can the player bounce a ping-pong ball on a paddle 20 times in a row without dropping it?", ru: "Сможет ли игрок 20 раз подряд отбить мяч для настольного тенниса ракеткой, не уронив его?", time: 30 },
     { en: "Can the player build a house of cards at least 3 levels tall? (3 tries)", ru: "Сможет ли игрок построить карточный домик минимум в 3 этажа? (3 попытки)", time: 60 },
     { en: "Can the player hold a wall-sit for 30 seconds?", ru: "Сможет ли игрок продержаться в положении «стул у стены» 30 секунд?", time: 30 },
     { en: "Can the player toss and catch 3 objects in a row without dropping any?", ru: "Сможет ли игрок подбросить и поймать 3 предмета подряд, не уронив ни одного?", time: 30 },
     { en: "Can the player do the worm dance move across 2 meters?", ru: "Сможет ли игрок станцевать «волну», проползая 2 метра?", time: 30 },
-    { en: "Can the player balance on one leg while touching their nose with the opposite hand for 15 seconds? Switch legs halfway through.", ru: "Сможет ли игрок простоять на одной ноге, касаясь носа противоположной рукой, 15 секунд? На середине нужно сменить ногу.", time: 30 },
     { en: "Can the player moonwalk backwards for 3 meters?", ru: "Сможет ли игрок пройти лунной походкой 3 метра?", time: 30 },
     { en: "Can the player spin around 5 times, then immediately stack 3 coins on top of each other? (2 tries)", ru: "Сможет ли игрок покружиться 5 раз, а затем сразу сложить 3 монеты друг на друга? (2 попытки)", time: 30 },
     { en: "Can the player do 10 toe touches without bending their knees?", ru: "Сможет ли игрок 10 раз коснуться носков ног, не сгибая колени?", time: 30 },
@@ -329,23 +311,13 @@ const BetYouCantGame = () => {
     { en: "Can the player do 5 proper lunges on each leg (10 total) with their hands behind their head?", ru: "Сможет ли игрок сделать 5 идеальных выпадов на каждую ногу (10 всего), держа руки за головой?", time: 45 },
     { en: "Can the player roll a pencil from the back of their hand to their fingertips without dropping it?", ru: "Сможет ли игрок прокатить карандаш от тыльной стороны ладони до кончиков пальцев, не уронив его?", time: 30 },
     { en: "Can the player bounce a ball in a figure-8 pattern between their legs 10 times?", ru: "Сможет ли игрок 10 раз прокинуть мяч между ног по траектории восьмёрки?", time: 30 },
-    { en: "Can the player stand on a pillow on one leg for 20 seconds?", ru: "Сможет ли игрок простоять на подушке на одной ноге 20 секунд?", time: 30 },
     { en: "Can the player write their name in the air with one foot while standing on the other leg?", ru: "Сможет ли игрок написать своё имя в воздухе ногой, стоя на другой ноге?", time: 30 },
     { en: "Can the player do 10 high knees in place, clapping above their head each time?", ru: "Сможет ли игрок сделать 10 высоких подъёмов колен на месте, каждый раз хлопая над головой?", time: 30 },
-    { en: "Can the player pick up 10 small objects off the floor using only their toes and drop them into a container?", ru: "Сможет ли игрок поднять 10 мелких предметов с пола только пальцами ног и сложить их в контейнер?", time: 45 },
     { en: "Can the player hold a yoga tree pose for 20 seconds on each leg?", ru: "Сможет ли игрок продержаться в позе «дерево» из йоги по 20 секунд на каждой ноге?", time: 45 },
     { en: "Can the player toss a backpack so it lands and stays on their knee? 3 tries — one success is enough.", ru: "Сможет ли игрок закинуть рюкзак себе на колено? Рюкзак должен приземлиться и остаться на колене. 3 попытки — достаточно одного успеха.", time: 30 },
-    { en: "Can the player lift a chair, toss it up, and catch it before it hits the ground? Must repeat successfully 3 times. 3 attempts.", ru: "Сможет ли игрок поднять стул, подбросить его и поймать, прежде чем он коснётся пола? Нужно успешно повторить это 3 раза. 3 попытки.", time: 30 },
-    { en: "Can the player lie down and, stretching out their arms, reach the door and grab it? 3 tries — must reach the door while stretched out from lying down.", ru: "Сможет ли игрок лечь и, вытянув руки, дотянуться до двери и схватиться за неё? 3 попытки — нужно дотянуться до двери, вытянувшись из положения лёжа.", time: 30 },
-    { en: "Can the player keep a pillow 'in flight'? Continuously toss the pillow while hopping side to side, keeping it under their jacket. 5 attempts in 30 seconds without dropping it.", ru: "Сможет ли игрок удержать подушку «в полёте»? Нужно непрерывно подбрасывать подушку, перепрыгивая с одной стороны на другую, удерживая её под курткой. 5 попыток за 30 секунд, не уронив её.", time: 30 },
-    { en: "Can the player roll their eyes backward for 30 seconds?", ru: "Сможет ли игрок вращать глазами назад в течение 30 секунд?", time: 30 },
     { en: "Can the player walk forward with fully straightened legs in an unusual gait for 20 steps?", ru: "Сможет ли игрок пройти вперёд на полностью прямых ногах необычной походкой 20 шагов?", time: 30 },
     { en: "Can the player pick up an object (like a mushroom) off the floor with their toes 5 times, grab it, and lift it to hand level? Needs 2 successes out of 4 tries.", ru: "Сможет ли игрок 5 раз поднять с пола предмет (например, гриб) пальцами ног, схватить его и поднять до уровня руки? Нужно 2 успеха из 4 попыток.", time: 30 },
-    { en: "Can the player sit and toss a pillow to hold a pose with their legs raised toward the ceiling, body at an angle? 3 tries — at least once without losing balance.", ru: "Сможет ли игрок сесть и подбросить подушку так, чтобы удержать позу, в которой ноги подняты к потолку, а тело сидит под углом? 3 попытки — хотя бы раз без потери равновесия.", time: 30 },
-    { en: "Can the player hold a lying position for 30 seconds, head and feet raised, giving a thumbs-up sign on the floor? The body must stay roughly in the same position throughout.", ru: "Сможет ли игрок продержаться лёжа 30 секунд, приподняв голову и ноги и показывая знак «класс» на полу? Тело должно оставаться примерно в одном положении всё это время.", time: 30 },
-    { en: "Can the player, lying with straight legs, push their wrists or elbows in opposite directions? Task: push back from shoulder level. 2 successes out of 4 tries.", ru: "Сможет ли игрок, лёжа с прямыми ногами, толкать запястья или локти в противоположные стороны? Задание: толчок назад от уровня плеч. 2 успеха из 4 попыток.", time: 30 },
-    { en: "Can the player hold and clap coins between their palms for 15 seconds? 3 tries.", ru: "Сможет ли игрок за 15 секунд удержать и хлопнуть монетами между ладонями? 3 попытки.", time: 30 },
-    { en: "Can the player throw a pillow at a target and catch it? Throw from 3 meters away. 2 tries.", ru: "Сможет ли игрок бросить подушку в цель и поймать её? Бросок с расстояния 3 метра. 2 попытки.", time: 30 }
+    { en: "Can the player hold and clap coins between their palms for 15 seconds? 3 tries.", ru: "Сможет ли игрок за 15 секунд удержать и хлопнуть монетами между ладонями? 3 попытки.", time: 30 }
   ];
 
   const mentalTasks = [
@@ -375,7 +347,6 @@ const BetYouCantGame = () => {
     { en: "Say the alphabet but skip every third letter (A, B, D, E, G...)", ru: "Произнеси алфавит, пропуская каждую третью букву (А, Б, Г, Д, Ж...)", time: 45 },
     { en: "Name 5 Shakespeare plays", ru: "Назови 5 пьес Шекспира", time: 30 },
     { en: "List 8 vegetables in 20 seconds", ru: "Назови 8 овощей за 20 секунд", time: 20 },
-    { en: "For a special person: one person reading this card (neither Lowell nor the card's reader) gets to name 10 words starting with 'Car'. They pass with 7 out of 10 words.", ru: "Для особенного человека: тот, кто читает эту карточку (не Lowell и не сам читающий), должен назвать 10 слов, начинающихся на «Car». Засчитывается 7 слов из 10.", time: 30 },
     { en: "Can the player name 4 chocolate bar brands? (e.g. Mars, Snickers)", ru: "Сможет ли игрок назвать 4 марки шоколадных батончиков? (например, Mars, Snickers)", time: 30 },
     { en: "Can the player name five fast-food chain brands?", ru: "Сможет ли игрок назвать пять сетевых брендов фастфуда?", time: 30 },
     { en: "Can the player name 5 sitcoms?", ru: "Сможет ли игрок назвать 5 ситкомов?", time: 30 },
@@ -393,8 +364,6 @@ const BetYouCantGame = () => {
     { en: "Can the player name 5 animals found in a zoo? At least 3.", ru: "Сможет ли игрок назвать 5 животных, которых можно встретить в зоопарке? Не менее 3.", time: 30 },
     { en: "Can the player spell 'electromagnetism' out loud without a single mistake?", ru: "Сможет ли игрок произнести по буквам слово «электромагнетизм» без единой ошибки?", time: 30 },
     { en: "Can the player name 2 contacts from their phone by memory (full name and number)?", ru: "Сможет ли игрок назвать по памяти 2 контакта из своего телефона (полное имя и номер)?", time: 30 },
-    { en: "Can the player give 6 correct answers?", ru: "Сможет ли игрок дать 6 правильных ответов?", time: 30 },
-    { en: "Can the player give 3 different answers?", ru: "Сможет ли игрок дать 3 разных ответа?", time: 30 },
     { en: "Can the player name 3 car brands? 2 of them starting with the same letter C?", ru: "Сможет ли игрок назвать 3 марки автомобилей? 2 из них — на одну и ту же букву С?", time: 30 },
     { en: "Can the player name 2 car brands starting with the letter C?", ru: "Сможет ли игрок назвать 2 марки автомобилей на букву С?", time: 30 },
     { en: "Can the player name 8 car parts?", ru: "Сможет ли игрок назвать 8 деталей автомобиля?", time: 30 },
@@ -711,489 +680,6 @@ const BetYouCantGame = () => {
         </div>
       </div>
     );
-  };
-
-  const renderDiagram = (diagramType, lang) => {
-    const L = (en, ru) => (lang === 'ru' ? ru : en);
-    if (diagramType === 'fold') {
-      return (
-        <div className="bg-white p-4 rounded-lg border-2 border-gray-300 mb-4">
-          <svg viewBox="0 0 400 200" className="w-full h-auto">
-            {/* Paper folding sequence */}
-            <rect x="20" y="80" width="60" height="80" fill="#e0e0e0" stroke="#333" strokeWidth="2"/>
-            <text x="50" y="125" textAnchor="middle" fontSize="20">①</text>
-            
-            <path d="M 90 120 L 110 120" stroke="#333" strokeWidth="2" markerEnd="url(#arrowhead)"/>
-            
-            <g transform="translate(120, 80)">
-              <rect width="40" height="80" fill="#d0d0d0" stroke="#333" strokeWidth="2"/>
-              <line x1="20" y1="0" x2="20" y2="80" stroke="#666" strokeWidth="2" strokeDasharray="4"/>
-            </g>
-            <text x="140" y="125" textAnchor="middle" fontSize="20">②</text>
-            
-            <path d="M 170 120 L 190 120" stroke="#333" strokeWidth="2" markerEnd="url(#arrowhead)"/>
-            
-            <g transform="translate(200, 90)">
-              <rect width="40" height="60" fill="#c0c0c0" stroke="#333" strokeWidth="2"/>
-              <line x1="20" y1="0" x2="20" y2="60" stroke="#666" strokeWidth="2" strokeDasharray="4"/>
-            </g>
-            <text x="220" y="125" textAnchor="middle" fontSize="20">③</text>
-            
-            <path d="M 250 120 L 270 120" stroke="#333" strokeWidth="2" markerEnd="url(#arrowhead)"/>
-            
-            <g transform="translate(280, 100)">
-              <rect width="40" height="40" fill="#b0b0b0" stroke="#333" strokeWidth="2"/>
-              <line x1="20" y1="0" x2="20" y2="40" stroke="#666" strokeWidth="2" strokeDasharray="4"/>
-            </g>
-            <text x="300" y="125" textAnchor="middle" fontSize="20">④</text>
-            
-            <defs>
-              <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
-                <polygon points="0 0, 10 3, 0 6" fill="#333"/>
-              </marker>
-            </defs>
-          </svg>
-          <p className="text-center text-sm text-gray-600 mt-2">{L("Fold the paper 4 times using only ONE hand", "Сложи бумагу 4 раза, используя только ОДНУ руку")}</p>
-        </div>
-      );
-    }
-    
-    if (diagramType === 'situp') {
-      return (
-        <div className="bg-white p-4 rounded-lg border-2 border-gray-300 mb-4">
-          <svg viewBox="0 0 400 200" className="w-full h-auto">
-            {/* Person lying down */}
-            <g transform="translate(50, 120)">
-              <circle cx="0" cy="0" r="15" fill="#ffc107" stroke="#333" strokeWidth="2"/>
-              <line x1="0" y1="15" x2="0" y2="60" stroke="#333" strokeWidth="3"/>
-              <line x1="0" y1="60" x2="-30" y2="90" stroke="#333" strokeWidth="3"/>
-              <line x1="0" y1="60" x2="30" y2="90" stroke="#333" strokeWidth="3"/>
-              <line x1="0" y1="30" x2="-25" y2="20" stroke="#333" strokeWidth="3"/>
-              <line x1="0" y1="30" x2="25" y2="20" stroke="#333" strokeWidth="3"/>
-            </g>
-            <line x1="20" y1="150" x2="120" y2="150" stroke="#666" strokeWidth="2"/>
-            <text x="70" y="170" textAnchor="middle" fontSize="16">{L("Start", "Старт")}</text>
-            
-            <path d="M 130 100 L 160 100" stroke="#333" strokeWidth="2" markerEnd="url(#arrowhead2)"/>
-            
-            {/* Person sitting up */}
-            <g transform="translate(220, 80)">
-              <circle cx="0" cy="0" r="15" fill="#ffc107" stroke="#333" strokeWidth="2"/>
-              <line x1="0" y1="15" x2="0" y2="50" stroke="#333" strokeWidth="3"/>
-              <line x1="0" y1="50" x2="0" y2="90" stroke="#333" strokeWidth="3"/>
-              <line x1="0" y1="90" x2="20" y2="90" stroke="#333" strokeWidth="3"/>
-              <line x1="0" y1="25" x2="-20" y2="15" stroke="#333" strokeWidth="3"/>
-              <line x1="0" y1="25" x2="20" y2="15" stroke="#333" strokeWidth="3"/>
-            </g>
-            <line x1="220" y1="170" x2="220" y2="150" stroke="#666" strokeWidth="2"/>
-            <text x="220" y="190" textAnchor="middle" fontSize="16">{L("Sit Up", "Подъём")}</text>
-            
-            <defs>
-              <marker id="arrowhead2" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
-                <polygon points="0 0, 10 3, 0 6" fill="#333"/>
-              </marker>
-            </defs>
-          </svg>
-          <p className="text-center text-sm text-gray-600 mt-2">{L("Keep legs STRAIGHT — 2 successful tries out of 3", "Держи ноги ПРЯМО — 2 успешные попытки из 3")}</p>
-        </div>
-      );
-    }
-    
-    if (diagramType === 'bottle') {
-      return (
-        <div className="bg-white p-4 rounded-lg border-2 border-gray-300 mb-4">
-          <svg viewBox="0 0 400 250" className="w-full h-auto">
-            {/* Hand with bottle */}
-            <g transform="translate(80, 150)">
-              <ellipse cx="0" cy="0" rx="20" ry="15" fill="#ffc107" stroke="#333" strokeWidth="2"/>
-              <rect x="-10" y="-60" width="20" height="60" fill="#4fc3f7" stroke="#333" strokeWidth="2" rx="3"/>
-              <rect x="-8" y="-70" width="16" height="12" fill="#81d4fa" stroke="#333" strokeWidth="2"/>
-            </g>
-            
-            {/* Pen being thrown */}
-            <g transform="translate(280, 80)">
-              <rect x="-3" y="0" width="6" height="40" fill="#333" rx="2"/>
-              <polygon points="0,-10 -4,0 4,0" fill="#ffc107"/>
-            </g>
-            
-            {/* Arrow showing throw direction */}
-            <path d="M 250 100 Q 180 120, 100 140" stroke="#2196F3" strokeWidth="3" fill="none" strokeDasharray="5,5" markerEnd="url(#arrowhead3)"/>
-            
-            <defs>
-              <marker id="arrowhead3" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
-                <polygon points="0 0, 10 3, 0 6" fill="#2196F3"/>
-              </marker>
-            </defs>
-          </svg>
-          <p className="text-center text-sm text-gray-600 mt-2">{L("Throw pen → Catch it in bottle (2 successful catches)", "Брось ручку → Поймай её в бутылку (2 успешных поимки)")}</p>
-        </div>
-      );
-    }
-    
-    if (diagramType === 'bottleflip') {
-      return (
-        <div className="bg-white p-4 rounded-lg border-2 border-gray-300 mb-4">
-          <svg viewBox="0 0 400 250" className="w-full h-auto">
-            {/* Bottle standing */}
-            <g transform="translate(80, 180)">
-              <rect x="-15" y="-50" width="30" height="50" fill="#4fc3f7" stroke="#333" strokeWidth="2" rx="3"/>
-              <rect x="-12" y="-60" width="24" height="12" fill="#81d4fa" stroke="#333" strokeWidth="2"/>
-              <line x1="-20" y1="0" x2="20" y2="0" stroke="#666" strokeWidth="2"/>
-            </g>
-            <text x="80" y="210" textAnchor="middle" fontSize="14">{L("Start", "Старт")}</text>
-            
-            {/* Bottle flipping */}
-            <g transform="translate(200, 100) rotate(180)">
-              <rect x="-15" y="-50" width="30" height="50" fill="#4fc3f7" stroke="#333" strokeWidth="2" rx="3"/>
-              <rect x="-12" y="-60" width="24" height="12" fill="#81d4fa" stroke="#333" strokeWidth="2"/>
-            </g>
-            
-            {/* Bottle landed */}
-            <g transform="translate(320, 180)">
-              <rect x="-15" y="-50" width="30" height="50" fill="#4fc3f7" stroke="#333" strokeWidth="2" rx="3"/>
-              <rect x="-12" y="-60" width="24" height="12" fill="#81d4fa" stroke="#333" strokeWidth="2"/>
-              <line x1="-20" y1="0" x2="20" y2="0" stroke="#666" strokeWidth="2"/>
-            </g>
-            <text x="320" y="210" textAnchor="middle" fontSize="14">{L("Landed!", "Приземление!")}</text>
-            
-            {/* Arrows */}
-            <path d="M 100 170 Q 150 100, 180 110" stroke="#2196F3" strokeWidth="3" fill="none" markerEnd="url(#arrowhead4)"/>
-            <path d="M 220 110 Q 270 100, 300 170" stroke="#2196F3" strokeWidth="3" fill="none" markerEnd="url(#arrowhead4)"/>
-            
-            <defs>
-              <marker id="arrowhead4" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
-                <polygon points="0 0, 10 3, 0 6" fill="#2196F3"/>
-              </marker>
-            </defs>
-          </svg>
-          <p className="text-center text-sm text-gray-600 mt-2">{L("Flip bottle to land upright (2 out of 3 tries)", "Подбрось бутылку так, чтобы она встала (2 из 3 попыток)")}</p>
-        </div>
-      );
-    }
-    
-    if (diagramType === 'jumprope') {
-      return (
-        <div className="bg-white p-4 rounded-lg border-2 border-gray-300 mb-4">
-          <svg viewBox="0 0 400 250" className="w-full h-auto">
-            {/* Person jumping */}
-            <g transform="translate(200, 120)">
-              <circle cx="0" cy="0" r="20" fill="#ffc107" stroke="#333" strokeWidth="2"/>
-              <line x1="0" y1="20" x2="0" y2="70" stroke="#333" strokeWidth="3"/>
-              <line x1="0" y1="70" x2="-25" y2="100" stroke="#333" strokeWidth="3"/>
-              <line x1="0" y1="70" x2="25" y2="100" stroke="#333" strokeWidth="3"/>
-              <line x1="0" y1="35" x2="-40" y2="10" stroke="#333" strokeWidth="3"/>
-              <line x1="0" y1="35" x2="40" y2="10" stroke="#333" strokeWidth="3"/>
-              
-              {/* Rope */}
-              <path d="M -40 10 Q -50 120, -20 180" stroke="#ff5722" strokeWidth="3" fill="none"/>
-              <path d="M 40 10 Q 50 120, 20 180" stroke="#ff5722" strokeWidth="3" fill="none"/>
-              <line x1="-20" y1="180" x2="20" y2="180" stroke="#ff5722" strokeWidth="3"/>
-            </g>
-            
-            {/* Ground */}
-            <line x1="50" y1="220" x2="350" y2="220" stroke="#666" strokeWidth="3"/>
-            
-            {/* Jump indicators */}
-            <path d="M 180 100 L 180 80" stroke="#4CAF50" strokeWidth="2" markerEnd="url(#arrowhead5)"/>
-            <path d="M 220 100 L 220 80" stroke="#4CAF50" strokeWidth="2" markerEnd="url(#arrowhead5)"/>
-            
-            <defs>
-              <marker id="arrowhead5" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto">
-                <polygon points="0 0, 10 5, 0 10" fill="#4CAF50"/>
-              </marker>
-            </defs>
-          </svg>
-          <p className="text-center text-sm text-gray-600 mt-2">{L("Jump rope for 15 seconds — raise your knees high!", "Прыгай через скакалку 15 секунд — высоко поднимай колени!")}</p>
-        </div>
-      );
-    }
-    
-    if (diagramType === 'eraser') {
-      return (
-        <div className="bg-white p-4 rounded-lg border-2 border-gray-300 mb-4">
-          <svg viewBox="0 0 400 250" className="w-full h-auto">
-            {/* Hand */}
-            <g transform="translate(200, 180)">
-              <ellipse cx="0" cy="0" rx="30" ry="20" fill="#ffc107" stroke="#333" strokeWidth="2"/>
-              <rect x="-8" y="-40" width="16" height="40" fill="#ffc107" stroke="#333" strokeWidth="2"/>
-            </g>
-            
-            {/* Eraser on hand */}
-            <rect x="185" y="165" width="30" height="10" fill="#e91e63" stroke="#333" strokeWidth="2" rx="2"/>
-            <text x="200" y="158" textAnchor="middle" fontSize="12">①</text>
-            
-            {/* Eraser thrown up */}
-            <g transform="translate(200, 80)">
-              <rect x="-15" y="-5" width="30" height="10" fill="#e91e63" stroke="#333" strokeWidth="2" rx="2"/>
-            </g>
-            <text x="200" y="65" textAnchor="middle" fontSize="12">②</text>
-            
-            {/* Arrow up */}
-            <path d="M 200 160 L 200 90" stroke="#2196F3" strokeWidth="3" markerEnd="url(#arrowhead6)"/>
-            
-            {/* Ground */}
-            <line x1="100" y1="220" x2="300" y2="220" stroke="#666" strokeWidth="3"/>
-            <text x="200" y="240" textAnchor="middle" fontSize="14">{L("Hit floor → Catch!", "Удар об пол → Лови!")}</text>
-            
-            <defs>
-              <marker id="arrowhead6" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto">
-                <polygon points="0 0, 10 5, 0 10" fill="#2196F3"/>
-              </marker>
-            </defs>
-          </svg>
-          <p className="text-center text-sm text-gray-600 mt-2">{L("Throw eraser up → Hit floor → Catch it! (2 out of 3)", "Подбрось ластик вверх → Удар об пол → Поймай! (2 из 3)")}</p>
-        </div>
-      );
-    }
-    
-    if (diagramType === 'bounce') {
-      return (
-        <div className="bg-white p-4 rounded-lg border-2 border-gray-300 mb-4">
-          <svg viewBox="0 0 400 250" className="w-full h-auto">
-            {/* Wall */}
-            <rect x="350" y="0" width="10" height="200" fill="#8b4513"/>
-            <text x="330" y="220" fontSize="14" fill="#666">{L("Wall", "Стена")}</text>
-            
-            {/* Floor */}
-            <line x1="0" y1="200" x2="360" y2="200" stroke="#666" strokeWidth="3"/>
-            <text x="180" y="230" textAnchor="middle" fontSize="14" fill="#666">{L("Floor", "Пол")}</text>
-            
-            {/* Player */}
-            <g transform="translate(50, 140)">
-              <circle cx="0" cy="0" r="12" fill="#ffc107" stroke="#333" strokeWidth="2"/>
-              <line x1="0" y1="12" x2="0" y2="40" stroke="#333" strokeWidth="3"/>
-              <line x1="0" y1="40" x2="-15" y2="60" stroke="#333" strokeWidth="3"/>
-              <line x1="0" y1="40" x2="15" y2="60" stroke="#333" strokeWidth="3"/>
-              <line x1="0" y1="22" x2="25" y2="15" stroke="#333" strokeWidth="3"/>
-              <line x1="0" y1="22" x2="-15" y2="30" stroke="#333" strokeWidth="3"/>
-            </g>
-            
-            {/* Ball path - checkmark shape */}
-            <circle cx="80" cy="120" r="8" fill="#ff5722" stroke="#333" strokeWidth="2"/>
-            
-            {/* Path arrows */}
-            <path d="M 85 125 Q 180 180, 280 180" stroke="#2196F3" strokeWidth="3" fill="none" strokeDasharray="5,5" markerEnd="url(#arrowhead7)"/>
-            <text x="180" y="195" textAnchor="middle" fontSize="12" fill="#2196F3">①</text>
-            
-            <path d="M 285 175 L 345 120" stroke="#2196F3" strokeWidth="3" fill="none" strokeDasharray="5,5" markerEnd="url(#arrowhead7)"/>
-            <text x="320" y="140" fontSize="12" fill="#2196F3">②</text>
-            
-            <path d="M 340 115 Q 200 80, 80 115" stroke="#2196F3" strokeWidth="3" fill="none" strokeDasharray="5,5" markerEnd="url(#arrowhead7)"/>
-            <text x="200" y="70" textAnchor="middle" fontSize="12" fill="#2196F3">③</text>
-            
-            {/* Checkmark on floor */}
-            <path d="M 120 210 L 180 240 L 300 190" stroke="#4CAF50" strokeWidth="4" fill="none"/>
-            <text x="210" y="245" textAnchor="middle" fontSize="12" fill="#4CAF50">{L("✓ shape", "✓ форма")}</text>
-            
-            <defs>
-              <marker id="arrowhead7" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
-                <polygon points="0 0, 10 3, 0 6" fill="#2196F3"/>
-              </marker>
-            </defs>
-          </svg>
-          <p className="text-center text-sm text-gray-600 mt-2">{L("① Bounce off floor → ② Hit wall → ③ Catch ball", "① Отскок от пола → ② Удар о стену → ③ Поймай мяч")}</p>
-        </div>
-      );
-    }
-    
-    if (diagramType === 'throwceiling') {
-      return (
-        <div className="bg-white p-4 rounded-lg border-2 border-gray-300 mb-4">
-          <svg viewBox="0 0 400 300" className="w-full h-auto">
-            {/* Ceiling */}
-            <line x1="0" y1="20" x2="400" y2="20" stroke="#666" strokeWidth="3"/>
-            <text x="200" y="15" textAnchor="middle" fontSize="14" fill="#666">{L("Ceiling", "Потолок")}</text>
-            
-            {/* Floor */}
-            <line x1="0" y1="280" x2="400" y2="280" stroke="#666" strokeWidth="3"/>
-            <text x="200" y="298" textAnchor="middle" fontSize="14" fill="#666">{L("Floor", "Пол")}</text>
-            
-            {/* Ball on floor */}
-            <circle cx="200" cy="270" r="10" fill="#ff5722" stroke="#333" strokeWidth="2"/>
-            
-            {/* Path up */}
-            <path d="M 200 260 L 200 140" stroke="#2196F3" strokeWidth="3" fill="none" strokeDasharray="5,5" markerEnd="url(#arrowhead8)"/>
-            
-            {/* Bounce path */}
-            <path d="M 200 140 L 200 30" stroke="#4CAF50" strokeWidth="3" fill="none" strokeDasharray="5,5" markerEnd="url(#arrowhead9)"/>
-            <circle cx="200" cy="30" r="8" fill="#ff5722" stroke="#333" strokeWidth="2"/>
-            
-            <text x="220" y="200" fontSize="14" fill="#2196F3">{L("①Bounce", "①Отскок")}</text>
-            <text x="220" y="80" fontSize="14" fill="#4CAF50">{L("②Hit ceiling", "②Удар о потолок")}</text>
-            
-            <defs>
-              <marker id="arrowhead8" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto">
-                <polygon points="0 0, 10 5, 0 10" fill="#2196F3"/>
-              </marker>
-              <marker id="arrowhead9" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto">
-                <polygon points="0 0, 10 5, 0 10" fill="#4CAF50"/>
-              </marker>
-            </defs>
-          </svg>
-          <p className="text-center text-sm text-gray-600 mt-2">{L("Throw ball from floor to hit ceiling (1 out of 3 tries)", "Брось мяч от пола, чтобы он ударился о потолок (1 из 3 попыток)")}</p>
-        </div>
-      );
-    }
-    
-    if (diagramType === 'dicestack') {
-      return (
-        <div className="bg-white p-4 rounded-lg border-2 border-gray-300 mb-4">
-          <svg viewBox="0 0 400 250" className="w-full h-auto">
-            {/* Floor */}
-            <line x1="50" y1="200" x2="350" y2="200" stroke="#666" strokeWidth="3"/>
-            
-            {/* Stacked dice */}
-            <g transform="translate(200, 50)">
-              <rect x="-15" y="120" width="30" height="30" fill="#fff" stroke="#333" strokeWidth="2" rx="3"/>
-              <circle cx="0" cy="135" r="2" fill="#333"/>
-              
-              <rect x="-15" y="85" width="30" height="30" fill="#fff" stroke="#333" strokeWidth="2" rx="3"/>
-              <circle cx="-5" cy="95" r="2" fill="#333"/>
-              <circle cx="5" cy="105" r="2" fill="#333"/>
-              
-              <rect x="-15" y="50" width="30" height="30" fill="#fff" stroke="#333" strokeWidth="2" rx="3"/>
-              <circle cx="-5" cy="60" r="2" fill="#333"/>
-              <circle cx="0" cy="65" r="2" fill="#333"/>
-              <circle cx="5" cy="70" r="2" fill="#333"/>
-              
-              <rect x="-15" y="15" width="30" height="30" fill="#fff" stroke="#333" strokeWidth="2" rx="3"/>
-              <circle cx="-7" cy="22" r="2" fill="#333"/>
-              <circle cx="7" cy="22" r="2" fill="#333"/>
-              <circle cx="-7" cy="38" r="2" fill="#333"/>
-              <circle cx="7" cy="38" r="2" fill="#333"/>
-              
-              <rect x="-15" y="-20" width="30" height="30" fill="#fff" stroke="#333" strokeWidth="2" rx="3"/>
-              <circle cx="-7" cy="-13" r="2" fill="#333"/>
-              <circle cx="0" cy="-13" r="2" fill="#333"/>
-              <circle cx="7" cy="-13" r="2" fill="#333"/>
-              <circle cx="0" cy="-3" r="2" fill="#333"/>
-              <circle cx="-7" cy="3" r="2" fill="#333"/>
-              <circle cx="7" cy="3" r="2" fill="#333"/>
-            </g>
-            
-            <text x="200" y="230" textAnchor="middle" fontSize="14" fill="#666">{L("Stack 5 dice!", "Собери 5 кубиков!")}</text>
-          </svg>
-          <p className="text-center text-sm text-gray-600 mt-2">{L("Stack 5 dice on top of each other (2 out of 3 tries)", "Поставь 5 кубиков друг на друга (2 из 3 попыток)")}</p>
-        </div>
-      );
-    }
-    
-    if (diagramType === 'pushup') {
-      return (
-        <div className="bg-white p-4 rounded-lg border-2 border-gray-300 mb-4">
-          <svg viewBox="0 0 400 200" className="w-full h-auto">
-            {/* Person in push-up position */}
-            <g transform="translate(200, 100)">
-              <circle cx="0" cy="0" r="15" fill="#ffc107" stroke="#333" strokeWidth="2"/>
-              <line x1="0" y1="15" x2="0" y2="50" stroke="#333" strokeWidth="3"/>
-              <line x1="0" y1="50" x2="-40" y2="70" stroke="#333" strokeWidth="3"/>
-              <line x1="0" y1="50" x2="40" y2="70" stroke="#333" strokeWidth="3"/>
-              <line x1="0" y1="25" x2="-35" y2="5" stroke="#333" strokeWidth="3"/>
-              <line x1="0" y1="25" x2="35" y2="5" stroke="#333" strokeWidth="3"/>
-            </g>
-            
-            {/* Floor */}
-            <line x1="100" y1="170" x2="300" y2="170" stroke="#666" strokeWidth="3"/>
-            
-            {/* Down arrow with "STOP 2s" */}
-            <path d="M 200 75 L 200 85" stroke="#ff0000" strokeWidth="3" markerEnd="url(#arrowhead10)"/>
-            <text x="220" y="90" fontSize="12" fill="#ff0000">{L("STOP 2s", "СТОП 2с")}</text>
-            
-            <defs>
-              <marker id="arrowhead10" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto">
-                <polygon points="0 0, 10 5, 0 10" fill="#ff0000"/>
-              </marker>
-            </defs>
-          </svg>
-          <p className="text-center text-sm text-gray-600 mt-2">{L("5 push-ups with a 2-second pause at the bottom", "5 отжиманий с 2-секундной задержкой внизу")}</p>
-        </div>
-      );
-    }
-    
-    if (diagramType === 'glassthrow') {
-      return (
-        <div className="bg-white p-4 rounded-lg border-2 border-gray-300 mb-4">
-          <svg viewBox="0 0 400 300" className="w-full h-auto">
-            {/* Person throwing */}
-            <g transform="translate(100, 80)">
-              <circle cx="0" cy="0" r="12" fill="#ffc107" stroke="#333" strokeWidth="2"/>
-              <line x1="0" y1="12" x2="0" y2="40" stroke="#333" strokeWidth="3"/>
-              <line x1="0" y1="40" x2="-15" y2="60" stroke="#333" strokeWidth="3"/>
-              <line x1="0" y1="40" x2="15" y2="60" stroke="#333" strokeWidth="3"/>
-              <line x1="0" y1="22" x2="30" y2="10" stroke="#333" strokeWidth="3"/>
-              <line x1="0" y1="22" x2="-20" y2="15" stroke="#333" strokeWidth="3"/>
-            </g>
-            
-            {/* Glass */}
-            <g transform="translate(130, 70)">
-              <path d="M -5,0 L -8,15 L 8,15 L 5,0 Z" fill="#87CEEB" stroke="#333" strokeWidth="2"/>
-            </g>
-            
-            {/* Throw path */}
-            <path d="M 135 75 Q 180 120, 200 260" stroke="#2196F3" strokeWidth="3" fill="none" strokeDasharray="5,5" markerEnd="url(#arrowhead11)"/>
-            
-            {/* Glass landed */}
-            <g transform="translate(200, 270)">
-              <path d="M -5,0 L -8,15 L 8,15 L 5,0 Z" fill="#87CEEB" stroke="#333" strokeWidth="2"/>
-              <text x="0" y="30" textAnchor="middle" fontSize="12" fill="#4CAF50">{L("✓Safe!", "✓Цел!")}</text>
-            </g>
-            
-            {/* Floor */}
-            <line x1="50" y1="280" x2="350" y2="280" stroke="#666" strokeWidth="3"/>
-            
-            {/* Height marker */}
-            <line x1="350" y1="80" x2="350" y2="280" stroke="#ff0000" strokeWidth="2" strokeDasharray="4"/>
-            <text x="360" y="180" fontSize="12" fill="#ff0000">{L("3m", "3м")}</text>
-            
-            <defs>
-              <marker id="arrowhead11" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto">
-                <polygon points="0 0, 10 5, 0 10" fill="#2196F3"/>
-              </marker>
-            </defs>
-          </svg>
-          <p className="text-center text-sm text-gray-600 mt-2">{L("Throw the glass from 3 meters up — it must not break!", "Брось стакан с высоты 3 метра — он не должен разбиться!")}</p>
-        </div>
-      );
-    }
-    
-    if (diagramType === 'cupbounce') {
-      return (
-        <div className="bg-white p-4 rounded-lg border-2 border-gray-300 mb-4">
-          <svg viewBox="0 0 400 250" className="w-full h-auto">
-            {/* Hand throwing */}
-            <g transform="translate(80, 120)">
-              <ellipse cx="0" cy="0" rx="20" ry="15" fill="#ffc107" stroke="#333" strokeWidth="2"/>
-            </g>
-            
-            {/* Cup being thrown */}
-            <g transform="translate(100, 100)">
-              <path d="M -8,0 L -10,15 L 10,15 L 8,0 Z" fill="#4fc3f7" stroke="#333" strokeWidth="2"/>
-            </g>
-            
-            {/* Throw path */}
-            <path d="M 105 105 Q 180 160, 250 200" stroke="#2196F3" strokeWidth="3" fill="none" strokeDasharray="5,5" markerEnd="url(#arrowhead12)"/>
-            
-            {/* Cup landed upright */}
-            <g transform="translate(250, 195)">
-              <path d="M -8,0 L -10,15 L 10,15 L 8,0 Z" fill="#4fc3f7" stroke="#333" strokeWidth="2"/>
-              <text x="0" y="30" textAnchor="middle" fontSize="12" fill="#4CAF50">{L("Upright!", "Стоит!")}</text>
-            </g>
-            
-            {/* Floor */}
-            <line x1="50" y1="210" x2="350" y2="210" stroke="#666" strokeWidth="3"/>
-            
-            <defs>
-              <marker id="arrowhead12" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto">
-                <polygon points="0 0, 10 5, 0 10" fill="#2196F3"/>
-              </marker>
-            </defs>
-          </svg>
-          <p className="text-center text-sm text-gray-600 mt-2">{L("Throw the cup so it lands upright (2 out of 4 tries)", "Брось стакан так, чтобы он встал (2 из 4 попыток)")}</p>
-        </div>
-      );
-    }
-    
-    return null;
   };
 
   let content;
@@ -1559,7 +1045,6 @@ const BetYouCantGame = () => {
                     <p className="text-xl font-semibold text-center mb-2">{currentTask.text}</p>
                     <p className="text-center text-gray-600">{t(lang, 'timeLimit', currentTask.time)}</p>
                   </div>
-                  {currentTask.diagram && renderDiagram(currentTask.diagram, lang)}
                 </>
               )}
 
@@ -1624,8 +1109,6 @@ const BetYouCantGame = () => {
                 <p className="text-2xl font-bold text-center mb-2">{currentTask.text}</p>
                 <p className="text-center text-gray-700 text-lg">⏱️ {t(lang, 'timeLimit', currentTask.time)}</p>
               </div>
-
-              {currentTask.diagram && renderDiagram(currentTask.diagram, lang)}
 
               <div className="bg-blue-50 p-4 rounded-lg mb-6">
                 <h3 className="font-bold text-lg mb-2">{t(lang, 'betsPlacedTitle')}</h3>
