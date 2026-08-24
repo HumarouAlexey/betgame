@@ -58,6 +58,7 @@ const STRINGS = {
     copyLink: 'Copy Link',
     startGame: 'Start Game ▶',
     waitingHostStart: 'Waiting for the host to start the game…',
+    hostHasLinks: "The host's screen has everyone's personal join link and QR code.",
     sameNetworkNote: "Players need to be on the same WiFi network as this server (or reach its address over the internet).",
     gameOverTitle: 'Game Over!',
     winnerLabel: (name) => `Winner: ${name}`,
@@ -148,6 +149,7 @@ const STRINGS = {
     copyLink: 'Скопировать ссылку',
     startGame: 'Начать игру ▶',
     waitingHostStart: 'Ожидание, пока хост начнёт игру…',
+    hostHasLinks: 'Личные ссылки и QR-коды всех игроков есть на экране хоста.',
     sameNetworkNote: 'Игроки должны быть в той же Wi-Fi сети, что и сервер (или иметь доступ к его адресу через интернет).',
     gameOverTitle: 'Игра окончена!',
     winnerLabel: (name) => `Победитель: ${name}`,
@@ -446,14 +448,26 @@ const BetYouCantGame = () => {
   };
 
   // ---- Connection / game identity ----
+  // `p` in the URL is a player's long, unguessable secret token (issued by
+  // the server via /claim or, for the host, at game creation) — never the
+  // player's small array index. That's what stops someone from "becoming"
+  // another player just by editing a digit in the URL.
   const params = new URLSearchParams(window.location.search);
   const urlGameId = params.get('g');
-  const urlPlayerId = params.get('p');
+  const urlPlayerToken = params.get('p');
   const urlAdminToken = params.get('a');
 
   const [gameId, setGameId] = useState(urlGameId || null);
-  const [myPlayerId, setMyPlayerId] = useState(urlPlayerId !== null ? Number(urlPlayerId) : null);
+  const [myToken, setMyToken] = useState(urlPlayerToken || null);
+  // The server resolves our token to our numeric player index on every
+  // response (gs.you); we mirror it into state so the rest of the UI can
+  // keep indexing gs.players[myPlayerId] as before.
+  const [myPlayerId, setMyPlayerId] = useState(null);
   const [adminToken, setAdminToken] = useState(urlAdminToken || null);
+  // Only the host receives the real per-player tokens (in the createGame
+  // response), used to build everyone's personal join link/QR. Nobody else
+  // ever sees another player's token.
+  const [playerTokens, setPlayerTokens] = useState([]);
   const isAdmin = !!adminToken;
   const [gs, setGs] = useState(null);
   const [loading, setLoading] = useState(!!urlGameId);
@@ -484,27 +498,46 @@ const BetYouCantGame = () => {
 
   const apiBase = () => `${window.location.origin}/api/games`;
 
-  // Appends our own player id (so the server knows which bet, if any, is
+  // Appends our own player token (so the server knows which bet, if any, is
   // safe to reveal to us) and the current UI language (for translated
   // server-side error messages).
   const viewerQuery = () => {
     const p = new URLSearchParams();
-    if (myPlayerId !== null) p.set('playerId', myPlayerId);
+    if (myToken) p.set('playerId', myToken);
     p.set('lang', lang);
     return `?${p.toString()}`;
   };
 
-  const claimPlayer = (id) => {
-    setMyPlayerId(id);
-    const url = new URL(window.location.href);
-    url.searchParams.set('p', id);
-    window.history.replaceState(null, '', url.toString());
+  // Claims an unclaimed player slot by tapping its name: the server hands
+  // back that player's secret token exactly once (refusing if someone
+  // already claimed it), which we then use as our identity going forward.
+  const claimPlayer = async (id) => {
+    try {
+      const res = await fetch(`${apiBase()}/${gameId}/claim?lang=${lang}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ playerId: id })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setApiError(data.error || t(lang, 'somethingWrong'));
+        return;
+      }
+      setMyToken(data.token);
+      const url = new URL(window.location.href);
+      url.searchParams.set('p', data.token);
+      window.history.replaceState(null, '', url.toString());
+    } catch (e) {
+      setApiError(t(lang, 'connectionError'));
+    }
   };
 
+  // Only meaningful for the host: builds a player's personal join link
+  // using the real secret token the server returned at game creation.
   const getShareUrl = (playerId) => {
     const url = new URL(window.location.origin + window.location.pathname);
     url.searchParams.set('g', gameId);
-    url.searchParams.set('p', playerId);
+    url.searchParams.set('p', playerTokens[playerId] || '');
     return url.toString();
   };
 
@@ -553,7 +586,16 @@ const BetYouCantGame = () => {
     refresh();
     const interval = setInterval(refresh, 1500);
     return () => { cancelled = true; clearInterval(interval); };
-  }, [gameId, myPlayerId, lang]);
+  }, [gameId, myToken, lang]);
+
+  // Mirrors the server-resolved player index (gs.you, derived from our
+  // secret token) into local state so the rest of the UI can keep indexing
+  // gs.players[myPlayerId] as before.
+  useEffect(() => {
+    if (gs && gs.you !== null && gs.you !== undefined) {
+      setMyPlayerId(gs.you);
+    }
+  }, [gs]);
 
   useEffect(() => {
     const tickInterval = setInterval(() => setNow(Date.now()), 1000);
@@ -659,6 +701,7 @@ const BetYouCantGame = () => {
       setGameId(data.gameId);
       setGs(data.state);
       setAdminToken(data.adminToken);
+      setPlayerTokens(data.playerTokens || []);
       const url = new URL(window.location.href);
       url.searchParams.set('g', data.gameId);
       url.searchParams.set('a', data.adminToken);
@@ -688,7 +731,7 @@ const BetYouCantGame = () => {
   const placeBet = async (willSucceed, amount) => {
     if (myPlayerId === null) return;
     setBetError(null);
-    const result = await post('/bet', { playerId: myPlayerId, willSucceed, amount });
+    const result = await post('/bet', { willSucceed, amount });
     if (result.error) setBetError(result.error);
   };
 
@@ -878,27 +921,31 @@ const BetYouCantGame = () => {
             </div>
           ) : renderJoinBar()}
 
-          <div className="grid sm:grid-cols-2 gap-4 mb-6">
-            {gs.players.map(p => (
-              <div key={p.id} className="border-2 border-purple-200 rounded-lg p-4 text-center">
-                <p className="font-semibold mb-2">{p.name}</p>
-                <img
-                  src={getQrImageUrl(getShareUrl(p.id))}
-                  alt={t(lang, 'qrAlt', p.name)}
-                  className="mx-auto mb-2 rounded"
-                  width={140}
-                  height={140}
-                />
-                <button
-                  onClick={() => copyLink(p.id)}
-                  className="w-full mb-2 px-3 py-1.5 bg-purple-100 text-purple-700 text-sm font-semibold rounded-lg hover:bg-purple-200"
-                >
-                  {copiedId === p.id ? t(lang, 'copied') : t(lang, 'copyLink')}
-                </button>
-                <p className="text-xs text-gray-500 break-all">{getShareUrl(p.id)}</p>
-              </div>
-            ))}
-          </div>
+          {isAdmin ? (
+            <div className="grid sm:grid-cols-2 gap-4 mb-6">
+              {gs.players.map(p => (
+                <div key={p.id} className="border-2 border-purple-200 rounded-lg p-4 text-center">
+                  <p className="font-semibold mb-2">{p.name}</p>
+                  <img
+                    src={getQrImageUrl(getShareUrl(p.id))}
+                    alt={t(lang, 'qrAlt', p.name)}
+                    className="mx-auto mb-2 rounded"
+                    width={140}
+                    height={140}
+                  />
+                  <button
+                    onClick={() => copyLink(p.id)}
+                    className="w-full mb-2 px-3 py-1.5 bg-purple-100 text-purple-700 text-sm font-semibold rounded-lg hover:bg-purple-200"
+                  >
+                    {copiedId === p.id ? t(lang, 'copied') : t(lang, 'copyLink')}
+                  </button>
+                  <p className="text-xs text-gray-500 break-all">{getShareUrl(p.id)}</p>
+                </div>
+              ))}
+            </div>
+          ) : !isMe && (
+            <p className="text-sm text-gray-500 text-center mb-6">{t(lang, 'hostHasLinks')}</p>
+          )}
 
           {isAdmin ? (
             <button

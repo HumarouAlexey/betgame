@@ -11,7 +11,6 @@ import (
 	mrand "math/rand"
 	"net"
 	"net/http"
-	"strconv"
 	"sync"
 	"time"
 )
@@ -22,8 +21,8 @@ var webFS embed.FS
 // These must match the length of skillTasks / mentalTasks in web/index.html.
 // If you add or remove tasks there, update these two numbers to match.
 const (
-	skillTaskCount  = 72
-	mentalTaskCount = 81
+	skillTaskCount  = 78
+	mentalTaskCount = 78
 	minBetAmount    = 5
 )
 
@@ -57,12 +56,23 @@ type GameState struct {
 	PerformEndsAt    *int64      `json:"performEndsAt"`
 	BetsCount        int         `json:"betsCount"`
 	BetPlacedBy      []int       `json:"betPlacedBy"`
+	You              *int        `json:"you"`
 }
 
 type Game struct {
 	mu         sync.Mutex
 	state      GameState
 	adminToken string
+	// playerTokens[i] is player i's secret identity token, required as
+	// ?playerId= on every request made "as" that player. Never sent to
+	// clients as part of GameState — only handed out once via handleClaim
+	// (self-serve, one-time) or in the handleCreateGame response (host-only,
+	// used to build each player's personal share link/QR).
+	playerTokens []string
+	// claimed[i] tracks whether handleClaim has already handed out
+	// playerTokens[i], so a second "tap your name" can't steal someone
+	// else's already-claimed identity.
+	claimed []bool
 }
 
 var (
@@ -92,18 +102,24 @@ func randomToken(length int) string {
 	return string(b)
 }
 
-// viewerFromRequest extracts the requesting client's own player id (if any)
-// from the ?playerId= query parameter, used to decide which bets they may see.
-func viewerFromRequest(r *http.Request) *int {
+// viewerFromRequest resolves the requesting client's own player index (if
+// any) from the ?playerId= query parameter. That parameter carries a
+// player's long, unguessable secret token (see Game.playerTokens), not a
+// raw index — so a request can't claim to be another player just by editing
+// a small number in the URL. Returns nil if the token is missing or doesn't
+// match any player in this game.
+func viewerFromRequest(g *Game, r *http.Request) *int {
 	raw := r.URL.Query().Get("playerId")
 	if raw == "" {
 		return nil
 	}
-	n, err := strconv.Atoi(raw)
-	if err != nil {
-		return nil
+	for i, tok := range g.playerTokens {
+		if tok != "" && tok == raw {
+			idx := i
+			return &idx
+		}
 	}
-	return &n
+	return nil
 }
 
 // sanitizeState returns a copy of state safe to send to a given viewer: bets
@@ -117,6 +133,7 @@ func sanitizeState(state GameState, viewerID *int) GameState {
 		placedBy = append(placedBy, pid)
 	}
 	out.BetPlacedBy = placedBy
+	out.You = viewerID
 
 	if state.ShowResults {
 		return out
@@ -131,16 +148,16 @@ func sanitizeState(state GameState, viewerID *int) GameState {
 	return out
 }
 
-func respondState(w http.ResponseWriter, r *http.Request, state GameState) {
-	writeJSON(w, sanitizeState(state, viewerFromRequest(r)))
+func respondState(w http.ResponseWriter, r *http.Request, g *Game) {
+	writeJSON(w, sanitizeState(g.state, viewerFromRequest(g, r)))
 }
 
 // requireCurrentPlayer rejects the request unless it was made by the game's
 // current player (identified by the ?playerId= query param). Writes a 403
 // and returns false if not; callers should stop handling on false.
-func requireCurrentPlayer(w http.ResponseWriter, r *http.Request, state GameState) bool {
-	viewerID := viewerFromRequest(r)
-	if viewerID == nil || *viewerID != state.CurrentPlayerIdx {
+func requireCurrentPlayer(w http.ResponseWriter, r *http.Request, g *Game) bool {
+	viewerID := viewerFromRequest(g, r)
+	if viewerID == nil || *viewerID != g.state.CurrentPlayerIdx {
 		writeErrKey(w, r, 403, "onlyCurrentPlayer")
 		return false
 	}
@@ -193,6 +210,8 @@ var errMessages = map[string]errMsg{
 	"betTooMuch":         {"can't bet more than half your money", "нельзя ставить больше половины своих денег"},
 	"methodNotAllowed":   {"method not allowed", "метод не разрешён"},
 	"unknownRoute":       {"unknown route", "неизвестный маршрут"},
+	"alreadyClaimed":     {"this player has already been claimed by someone else", "этого игрока уже выбрал кто-то другой"},
+	"mustJoinFirst":      {"you must join the game as a player first", "сначала нужно присоединиться к игре"},
 }
 
 // writeErrKey writes an error message in the language requested via ?lang=ru
@@ -272,6 +291,10 @@ func handleCreateGame(w http.ResponseWriter, r *http.Request) {
 	}
 
 	adminToken := randomToken(24)
+	playerTokens := make([]string, req.NumPlayers)
+	for i := range playerTokens {
+		playerTokens[i] = randomToken(24)
+	}
 
 	gamesMu.Lock()
 	var id string
@@ -281,13 +304,22 @@ func handleCreateGame(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
-	games[id] = &Game{state: state, adminToken: adminToken}
+	games[id] = &Game{
+		state:        state,
+		adminToken:   adminToken,
+		playerTokens: playerTokens,
+		claimed:      make([]bool, req.NumPlayers),
+	}
 	gamesMu.Unlock()
 
+	// playerTokens is returned only here, directly to the game's creator —
+	// it's what lets the host build each player's personal join link/QR
+	// without anyone having to guess or intercept another player's secret.
 	writeJSON(w, map[string]interface{}{
-		"gameId":     id,
-		"adminToken": adminToken,
-		"state":      sanitizeState(state, nil),
+		"gameId":       id,
+		"adminToken":   adminToken,
+		"playerTokens": playerTokens,
+		"state":        sanitizeState(state, nil),
 	})
 }
 
@@ -299,7 +331,7 @@ func handleGetGame(w http.ResponseWriter, r *http.Request, id string) {
 	}
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	respondState(w, r, g.state)
+	respondState(w, r, g)
 }
 
 type startReq struct {
@@ -325,7 +357,41 @@ func handleStart(w http.ResponseWriter, r *http.Request, id string) {
 		ends := nowMs() + int64(g.state.GameTimeMinutes)*60000
 		g.state.GameEndsAt = &ends
 	}
-	respondState(w, r, g.state)
+	respondState(w, r, g)
+}
+
+type claimReq struct {
+	PlayerID int `json:"playerId"`
+}
+
+// handleClaim lets a player who only has the shared game link (no personal
+// token yet) tap their own name once to receive their secret identity
+// token. Each player slot can only be claimed this way once, so a second
+// visitor can't later tap the same name and get handed someone else's
+// token.
+func handleClaim(w http.ResponseWriter, r *http.Request, id string) {
+	g, ok := getGame(id)
+	if !ok {
+		writeErrKey(w, r, 404, "gameNotFound")
+		return
+	}
+	var req claimReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeErrKey(w, r, 400, "badRequest")
+		return
+	}
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if req.PlayerID < 0 || req.PlayerID >= len(g.playerTokens) {
+		writeErrKey(w, r, 400, "invalidPlayer")
+		return
+	}
+	if g.claimed[req.PlayerID] {
+		writeErrKey(w, r, 409, "alreadyClaimed")
+		return
+	}
+	g.claimed[req.PlayerID] = true
+	writeJSON(w, map[string]string{"token": g.playerTokens[req.PlayerID]})
 }
 
 func handleRoll(w http.ResponseWriter, r *http.Request, id string) {
@@ -336,12 +402,12 @@ func handleRoll(w http.ResponseWriter, r *http.Request, id string) {
 	}
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	if !requireCurrentPlayer(w, r, g.state) {
+	if !requireCurrentPlayer(w, r, g) {
 		return
 	}
 
 	if g.state.DiceValue != nil {
-		respondState(w, r, g.state)
+		respondState(w, r, g)
 		return
 	}
 
@@ -383,7 +449,7 @@ func handleRoll(w http.ResponseWriter, r *http.Request, id string) {
 		g.state.DiceValue = &roll
 	}
 
-	respondState(w, r, g.state)
+	respondState(w, r, g)
 }
 
 type blindTypeReq struct {
@@ -404,13 +470,13 @@ func handleBlindType(w http.ResponseWriter, r *http.Request, id string) {
 	}
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	if !requireCurrentPlayer(w, r, g.state) {
+	if !requireCurrentPlayer(w, r, g) {
 		return
 	}
 	g.state.BlindBetTaskType = &req.Type
 	g.state.Phase = "blindBetting"
 	g.state.Bets = map[int]Bet{}
-	respondState(w, r, g.state)
+	respondState(w, r, g)
 }
 
 func handleReveal(w http.ResponseWriter, r *http.Request, id string) {
@@ -421,7 +487,7 @@ func handleReveal(w http.ResponseWriter, r *http.Request, id string) {
 	}
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	if !requireCurrentPlayer(w, r, g.state) {
+	if !requireCurrentPlayer(w, r, g) {
 		return
 	}
 	if g.state.BlindBetTaskType == nil {
@@ -438,7 +504,7 @@ func handleReveal(w http.ResponseWriter, r *http.Request, id string) {
 	g.state.CurrentTaskType = &t
 	g.state.CurrentTaskIndex = &idx
 	g.state.Phase = "revealBlindTask"
-	respondState(w, r, g.state)
+	respondState(w, r, g)
 }
 
 type startChallengeReq struct {
@@ -458,17 +524,16 @@ func handleStartChallenge(w http.ResponseWriter, r *http.Request, id string) {
 	}
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	if !requireCurrentPlayer(w, r, g.state) {
+	if !requireCurrentPlayer(w, r, g) {
 		return
 	}
 	ends := nowMs() + int64(req.TaskTimeSeconds)*1000
 	g.state.PerformEndsAt = &ends
 	g.state.Phase = "performing"
-	respondState(w, r, g.state)
+	respondState(w, r, g)
 }
 
 type betReq struct {
-	PlayerID    int  `json:"playerId"`
 	WillSucceed bool `json:"willSucceed"`
 	Amount      int  `json:"amount"`
 }
@@ -487,15 +552,20 @@ func handleBet(w http.ResponseWriter, r *http.Request, id string) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
-	if req.PlayerID < 0 || req.PlayerID >= len(g.state.Players) {
-		writeErrKey(w, r, 400, "invalidPlayer")
+	// The bettor's identity comes only from their own secret token (?playerId=),
+	// never from the request body — otherwise anyone could bet as anyone else
+	// just by naming a different playerId in the JSON.
+	viewerID := viewerFromRequest(g, r)
+	if viewerID == nil {
+		writeErrKey(w, r, 403, "mustJoinFirst")
 		return
 	}
-	if req.PlayerID == g.state.CurrentPlayerIdx {
+	playerID := *viewerID
+	if playerID == g.state.CurrentPlayerIdx {
 		writeErrKey(w, r, 400, "currentPlayerNoBet")
 		return
 	}
-	player := g.state.Players[req.PlayerID]
+	player := g.state.Players[playerID]
 	if req.Amount < minBetAmount {
 		writeErr(w, 400, minBetMsg(r.URL.Query().Get("lang")))
 		return
@@ -504,8 +574,8 @@ func handleBet(w http.ResponseWriter, r *http.Request, id string) {
 		writeErrKey(w, r, 400, "betTooMuch")
 		return
 	}
-	g.state.Bets[req.PlayerID] = Bet{WillSucceed: req.WillSucceed, Amount: req.Amount}
-	respondState(w, r, g.state)
+	g.state.Bets[playerID] = Bet{WillSucceed: req.WillSucceed, Amount: req.Amount}
+	respondState(w, r, g)
 }
 
 type resultReq struct {
@@ -522,9 +592,12 @@ func handleResult(w http.ResponseWriter, r *http.Request, id string) {
 	json.NewDecoder(r.Body).Decode(&req)
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	if !requireCurrentPlayer(w, r, g) {
+		return
+	}
 
 	if g.state.TaskSuccess != nil {
-		respondState(w, r, g.state)
+		respondState(w, r, g)
 		return
 	}
 	total := 0
@@ -544,7 +617,7 @@ func handleResult(w http.ResponseWriter, r *http.Request, id string) {
 	success := req.Success
 	g.state.TaskSuccess = &success
 	g.state.ShowResults = true
-	respondState(w, r, g.state)
+	respondState(w, r, g)
 }
 
 func handleNextTurn(w http.ResponseWriter, r *http.Request, id string) {
@@ -555,7 +628,7 @@ func handleNextTurn(w http.ResponseWriter, r *http.Request, id string) {
 	}
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	if !requireCurrentPlayer(w, r, g.state) {
+	if !requireCurrentPlayer(w, r, g) {
 		return
 	}
 
@@ -569,7 +642,7 @@ func handleNextTurn(w http.ResponseWriter, r *http.Request, id string) {
 	g.state.Phase = "playing"
 	g.state.BlindBetTaskType = nil
 	g.state.PerformEndsAt = nil
-	respondState(w, r, g.state)
+	respondState(w, r, g)
 }
 
 func handleEnd(w http.ResponseWriter, r *http.Request, id string) {
@@ -580,11 +653,11 @@ func handleEnd(w http.ResponseWriter, r *http.Request, id string) {
 	}
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	if !requireCurrentPlayer(w, r, g.state) {
+	if !requireCurrentPlayer(w, r, g) {
 		return
 	}
 	g.state.Phase = "gameOver"
-	respondState(w, r, g.state)
+	respondState(w, r, g)
 }
 
 // routes a request like /api/games/{id}/{action}
@@ -616,6 +689,8 @@ func apiHandler(w http.ResponseWriter, r *http.Request) {
 		handleGetGame(w, r, id)
 	case action == "start" && r.Method == http.MethodPost:
 		handleStart(w, r, id)
+	case action == "claim" && r.Method == http.MethodPost:
+		handleClaim(w, r, id)
 	case action == "roll" && r.Method == http.MethodPost:
 		handleRoll(w, r, id)
 	case action == "blindType" && r.Method == http.MethodPost:
