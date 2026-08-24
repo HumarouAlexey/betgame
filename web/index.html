@@ -790,8 +790,8 @@ const BetYouCantGame = () => {
                   <span className="flex-1 text-center text-2xl font-bold text-gray-800">{localSetup.gameTime}</span>
                   <button
                     type="button"
-                    onClick={() => setLocalSetup(prev => ({ ...prev, gameTime: Math.min(60, prev.gameTime + 5) }))}
-                    disabled={localSetup.gameTime >= 60}
+                    onClick={() => setLocalSetup(prev => ({ ...prev, gameTime: Math.min(90, prev.gameTime + 5) }))}
+                    disabled={localSetup.gameTime >= 90}
                     className="w-12 h-12 shrink-0 flex items-center justify-center text-2xl font-bold bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 active:bg-purple-300 disabled:opacity-40 disabled:hover:bg-purple-100"
                   >
                     +
