@@ -262,7 +262,7 @@ const BetForm = ({ player, onBet, error, lang }) => {
               {t(lang, 'no')}
             </button>
           </div>
-          <p className="text-xs text-gray-500 mt-1">{t(lang, 'minMaxBet', MIN_BET, maxBet)}</p>
+          <p className="text-base font-semibold text-gray-700 mt-1">{t(lang, 'minMaxBet', MIN_BET, maxBet)}</p>
         </>
       ) : (
         <p className="text-sm text-red-600">{t(lang, 'notEnoughForMinBet', MIN_BET)}</p>
