@@ -104,8 +104,9 @@ const STRINGS = {
     youPerforming: "You're performing!",
     otherPerforming: (name) => `${name} is performing!`,
     secondsLeft: (s) => `${s}s left`,
-    didSucceed: (name) => `Did ${name} succeed?`,
-    anyoneCanJudge: 'Anyone can judge — tap the result together.',
+    didYouSucceed: 'Did you succeed?',
+    onlyYouJudge: 'Only you can record the result.',
+    waitingResult: (name) => `Waiting for ${name} to record the result…`,
     successBtn: '✓ SUCCESS',
     failedBtn: '✗ FAILED',
     resultsTitle: 'Results:',
@@ -197,8 +198,9 @@ const STRINGS = {
     youPerforming: 'Ты выполняешь испытание!',
     otherPerforming: (name) => `${name} выполняет испытание!`,
     secondsLeft: (s) => `осталось ${s} с`,
-    didSucceed: (name) => `Справился ли ${name}?`,
-    anyoneCanJudge: 'Судить может любой — вместе нажмите на результат.',
+    didYouSucceed: 'Справился?',
+    onlyYouJudge: 'Только ты отмечаешь результат.',
+    waitingResult: (name) => `Ожидание, пока ${name} отметит результат…`,
     successBtn: '✓ УСПЕХ',
     failedBtn: '✗ ПРОВАЛ',
     resultsTitle: 'Результаты:',
@@ -1320,11 +1322,11 @@ const BetYouCantGame = () => {
                 </p>
               </div>
 
-              {!gs.showResults && (
+              {!gs.showResults && (iAmCurrent ? (
                 <>
                   <div className="text-center mb-6">
-                    <p className="text-lg mb-2">{t(lang, 'didSucceed', currentPlayer.name)}</p>
-                    <p className="text-xs text-gray-400">{t(lang, 'anyoneCanJudge')}</p>
+                    <p className="text-lg mb-2">{t(lang, 'didYouSucceed')}</p>
+                    <p className="text-xs text-gray-400">{t(lang, 'onlyYouJudge')}</p>
                   </div>
 
                   <div className="flex gap-4 justify-center">
@@ -1342,7 +1344,9 @@ const BetYouCantGame = () => {
                     </button>
                   </div>
                 </>
-              )}
+              ) : (
+                <p className="text-sm text-gray-500 text-center">{t(lang, 'waitingResult', currentPlayer.name)}</p>
+              ))}
 
               {gs.showResults && (
                 <div className="mt-2 p-4 bg-blue-50 rounded-lg">
