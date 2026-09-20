@@ -25,11 +25,11 @@ const STRINGS = {
     title: "Bet You Can't!",
     betFormPrompt: (name, money) => `${name}, place your bet (€${money} available):`,
     amountPlaceholder: 'Amount',
-    minBetButton: 'MIN',
-    maxBetButton: 'MAX',
     yes: 'YES',
     no: 'NO',
-    minMaxBet: (min, max) => `Min bet: €${min} · Max bet: €${max}`,
+    minBetLabel: 'Min bet:',
+    maxBetLabel: 'Max bet:',
+    tapAmountHint: 'tap an amount to use it, or type your own in the field',
     notEnoughForMinBet: (min) => `Not enough money to place the €${min} minimum bet.`,
     connectionError: "Can't reach the game server. Check it's still running and you're on the same network.",
     somethingWrong: 'Something went wrong',
@@ -118,11 +118,11 @@ const STRINGS = {
     title: 'Спорим, не сможешь!',
     betFormPrompt: (name, money) => `${name}, сделай ставку (доступно €${money}):`,
     amountPlaceholder: 'Сумма',
-    minBetButton: 'МИН',
-    maxBetButton: 'МАКС',
     yes: 'ДА',
     no: 'НЕТ',
-    minMaxBet: (min, max) => `Мин. ставка: €${min} · Макс. ставка: €${max}`,
+    minBetLabel: 'Мин. ставка:',
+    maxBetLabel: 'Макс. ставка:',
+    tapAmountHint: 'нажми на сумму, чтобы подставить её, или введи свою в поле',
     notEnoughForMinBet: (min) => `Недостаточно денег для минимальной ставки €${min}.`,
     connectionError: 'Не удаётся подключиться к серверу игры. Убедитесь, что он запущен и вы в одной сети.',
     somethingWrong: 'Что-то пошло не так',
@@ -251,20 +251,8 @@ const BetForm = ({ player, onBet, error, lang }) => {
               max={maxBet}
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              className="flex-1 min-w-0 px-3 py-2 border rounded"
+              className="flex-1 px-3 py-2 border rounded"
             />
-            <button
-              onClick={() => setAmount(String(MIN_BET))}
-              className="px-2 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 font-semibold"
-            >
-              {t(lang, 'minBetButton')}
-            </button>
-            <button
-              onClick={() => setAmount(String(maxBet))}
-              className="px-2 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 font-semibold"
-            >
-              {t(lang, 'maxBetButton')}
-            </button>
             <button
               onClick={() => onBet(true, parsed)}
               disabled={!validAmount}
@@ -280,7 +268,24 @@ const BetForm = ({ player, onBet, error, lang }) => {
               {t(lang, 'no')}
             </button>
           </div>
-          <p className="text-base font-semibold text-gray-700 mt-1">{t(lang, 'minMaxBet', MIN_BET, maxBet)}</p>
+          <p className="text-base font-semibold text-gray-700 mt-2">
+            {t(lang, 'minBetLabel')}{' '}
+            <button
+              onClick={() => setAmount(String(MIN_BET))}
+              className="text-blue-600 underline decoration-dotted underline-offset-2 font-bold"
+            >
+              €{MIN_BET}
+            </button>
+            {' · '}
+            {t(lang, 'maxBetLabel')}{' '}
+            <button
+              onClick={() => setAmount(String(maxBet))}
+              className="text-blue-600 underline decoration-dotted underline-offset-2 font-bold"
+            >
+              €{maxBet}
+            </button>
+            <span className="block text-sm font-normal text-gray-500">{t(lang, 'tapAmountHint')}</span>
+          </p>
         </>
       ) : (
         <p className="text-sm text-red-600">{t(lang, 'notEnoughForMinBet', MIN_BET)}</p>
