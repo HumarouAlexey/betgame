@@ -21,8 +21,8 @@ var webFS embed.FS
 // These must match the length of skillTasks / mentalTasks in web/index.html.
 // If you add or remove tasks there, update these two numbers to match.
 const (
-	skillTaskCount  = 78
-	mentalTaskCount = 78
+	skillTaskCount  = 72
+	mentalTaskCount = 68
 	minBetAmount    = 5
 )
 
