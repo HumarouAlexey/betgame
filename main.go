@@ -509,6 +509,9 @@ func handleReveal(w http.ResponseWriter, r *http.Request, id string) {
 
 type startChallengeReq struct {
 	TaskTimeSeconds int `json:"taskTimeSeconds"`
+	// NoTimeLimit runs the challenge without a deadline, for tasks whose
+	// outcome is decided by a number of tries rather than by a clock.
+	NoTimeLimit bool `json:"noTimeLimit"`
 }
 
 func handleStartChallenge(w http.ResponseWriter, r *http.Request, id string) {
@@ -527,8 +530,12 @@ func handleStartChallenge(w http.ResponseWriter, r *http.Request, id string) {
 	if !requireCurrentPlayer(w, r, g) {
 		return
 	}
-	ends := nowMs() + int64(req.TaskTimeSeconds)*1000
-	g.state.PerformEndsAt = &ends
+	if req.NoTimeLimit {
+		g.state.PerformEndsAt = nil
+	} else {
+		ends := nowMs() + int64(req.TaskTimeSeconds)*1000
+		g.state.PerformEndsAt = &ends
+	}
 	g.state.Phase = "performing"
 	respondState(w, r, g)
 }
