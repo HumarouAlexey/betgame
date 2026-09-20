@@ -25,6 +25,7 @@ const STRINGS = {
     title: "Bet You Can't!",
     betFormPrompt: (name, money) => `${name}, place your bet (€${money} available):`,
     amountPlaceholder: 'Amount',
+    maxBetButton: 'MAX',
     yes: 'YES',
     no: 'NO',
     minMaxBet: (min, max) => `Min bet: €${min} · Max bet: €${max}`,
@@ -116,6 +117,7 @@ const STRINGS = {
     title: 'Спорим, не сможешь!',
     betFormPrompt: (name, money) => `${name}, сделай ставку (доступно €${money}):`,
     amountPlaceholder: 'Сумма',
+    maxBetButton: 'МАКС',
     yes: 'ДА',
     no: 'НЕТ',
     minMaxBet: (min, max) => `Мин. ставка: €${min} · Макс. ставка: €${max}`,
@@ -247,8 +249,14 @@ const BetForm = ({ player, onBet, error, lang }) => {
               max={maxBet}
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              className="flex-1 px-3 py-2 border rounded"
+              className="flex-1 min-w-0 px-3 py-2 border rounded"
             />
+            <button
+              onClick={() => setAmount(String(maxBet))}
+              className="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 font-semibold"
+            >
+              {t(lang, 'maxBetButton')}
+            </button>
             <button
               onClick={() => onBet(true, parsed)}
               disabled={!validAmount}
