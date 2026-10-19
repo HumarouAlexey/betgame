@@ -29,6 +29,7 @@ const { useState, useEffect } = React;
 
 const MIN_BET = 5;
 const STARTING_MONEY = 100;
+const RESCUE_AMOUNT = 100;
 
 // ---- i18n ----
 const STRINGS = {
@@ -134,6 +135,8 @@ const STRINGS = {
     taskCompleted: 'Completed!',
     taskFailed: 'Failed',
     continueBtn: 'Continue',
+    rescuedYou: (amount) => `Don't give up! The bank tops you up with €${amount}. Time for a comeback.`,
+    rescuedOther: (name, amount) => `${name} was running low, so the bank tops them up with €${amount}.`,
   },
   ru: {
     title: 'Спорим, не сможешь!',
@@ -237,6 +240,8 @@ const STRINGS = {
     taskCompleted: 'Выполнено!',
     taskFailed: 'Провалено',
     continueBtn: 'Продолжить',
+    rescuedYou: (amount) => `Не сдавайся! Банк добавляет тебе €${amount}. Самое время отыграться.`,
+    rescuedOther: (name, amount) => `${name} получает от банка €${amount}, чтобы вернуться в игру.`,
   },
 };
 
@@ -740,6 +745,15 @@ const BetYouCantGame = () => {
   const [apiError, setApiError] = useState(null);
   const [betError, setBetError] = useState(null);
   const [now, setNow] = useState(Date.now());
+  // How far the server's clock is ahead of ours, refreshed with every state
+  // we receive. Deadlines like performEndsAt are in server time, so
+  // countdowns compare against serverNow(), not Date.now().
+  const clockOffsetRef = React.useRef(0);
+  const serverNow = () => Date.now() + clockOffsetRef.current;
+  const applyState = (state) => {
+    if (state && state.serverNow) clockOffsetRef.current = state.serverNow - Date.now();
+    setGs(state);
+  };
   const [joinError, setJoinError] = useState(null);
   const [copied, setCopied] = useState(false);
   // Which irreversible action is waiting for a yes: 'start', 'end' or null.
@@ -799,7 +813,7 @@ const BetYouCantGame = () => {
         return;
       }
       setMyToken(data.token);
-      setGs(data.state);
+      applyState(data.state);
       const url = new URL(window.location.href);
       url.searchParams.set('p', data.token);
       window.history.replaceState(null, '', url.toString());
@@ -849,7 +863,7 @@ const BetYouCantGame = () => {
         if (!res.ok) throw new Error('not found');
         const data = await res.json();
         if (!cancelled) {
-          setGs(data);
+          applyState(data);
           setApiError(null);
         }
       } catch (e) {
@@ -872,8 +886,10 @@ const BetYouCantGame = () => {
     }
   }, [gs]);
 
+  // Ticks several times a second so a countdown flips close to the real
+  // second boundary instead of up to a second late.
   useEffect(() => {
-    const tickInterval = setInterval(() => setNow(Date.now()), 1000);
+    const tickInterval = setInterval(() => setNow(Date.now()), 250);
     return () => clearInterval(tickInterval);
   }, []);
 
@@ -925,7 +941,7 @@ const BetYouCantGame = () => {
   const performAlertedRef = React.useRef(null);
   useEffect(() => {
     if (!gs || gs.phase !== 'performing' || !gs.performEndsAt) return;
-    if (now >= gs.performEndsAt && performAlertedRef.current !== gs.performEndsAt) {
+    if (serverNow() >= gs.performEndsAt && performAlertedRef.current !== gs.performEndsAt) {
       performAlertedRef.current = gs.performEndsAt;
       playTimeUpSound();
     }
@@ -943,7 +959,7 @@ const BetYouCantGame = () => {
       if (!res.ok) {
         return { error: data.error || t(lang, 'somethingWrong') };
       }
-      setGs(data);
+      applyState(data);
       setApiError(null);
       return { data };
     } catch (e) {
@@ -965,7 +981,7 @@ const BetYouCantGame = () => {
         return;
       }
       setGameId(data.gameId);
-      setGs(data.state);
+      applyState(data.state);
       const url = new URL(window.location.href);
       url.searchParams.set('g', data.gameId);
       window.history.replaceState(null, '', url.toString());
@@ -1180,8 +1196,12 @@ const BetYouCantGame = () => {
   const currentTask = currentTaskObject(gs);
   const currentPlayer = gs.players[gs.currentPlayerIndex];
   const taskTimeText = (task) => (task.time ? t(lang, 'timeLimit', task.time) : t(lang, 'noTimeLimit'));
+  // Capped at the task's own limit, so a 30-second task never shows 31.
   const challengeTimeLeft = gs.performEndsAt
-    ? Math.max(0, Math.ceil((gs.performEndsAt - now) / 1000))
+    ? Math.min(
+        currentTask && currentTask.time ? currentTask.time : Infinity,
+        Math.max(0, Math.ceil((gs.performEndsAt - serverNow()) / 1000))
+      )
     : null;
   const iAmCurrent = myPlayerId === gs.currentPlayerIndex;
   const otherPlayers = gs.players.filter((_, i) => i !== gs.currentPlayerIndex);
@@ -1363,6 +1383,13 @@ const BetYouCantGame = () => {
                 })}
               </ul>
             )}
+            {(gs.rescued || []).map(pid => (
+              <Notice key={pid} tone="success" className="mt-3">
+                {pid === myPlayerId
+                  ? t(lang, 'rescuedYou', RESCUE_AMOUNT)
+                  : t(lang, 'rescuedOther', gs.players[pid].name, RESCUE_AMOUNT)}
+              </Notice>
+            ))}
             <Button block className="mt-6" onClick={nextTurn} disabled={!iAmCurrent}>{t(lang, 'continueBtn')}</Button>
             {waitingContinue}
           </div>

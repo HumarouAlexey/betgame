@@ -28,6 +28,12 @@ const (
 	mentalTaskCount = 67
 	minBetAmount    = 5
 	startingMoney   = 100
+	// A player whose money drops to rescueThreshold or below after a
+	// challenge is topped up by rescueAmount, so nobody is stuck unable to
+	// bet. Losing a bet can't take anyone below minBetAmount, so in practice
+	// this catches €5–10.
+	rescueThreshold = 10
+	rescueAmount    = 100
 	maxNameLength   = 24
 )
 
@@ -54,12 +60,19 @@ type GameState struct {
 	BlindBetTaskType *string     `json:"blindBetTaskType"`
 	TaskSuccess      *bool       `json:"taskSuccess"`
 	ShowResults      bool        `json:"showResults"`
-	UsedSkillTasks   []int       `json:"usedSkillTasks"`
-	UsedMentalTasks  []int       `json:"usedMentalTasks"`
-	PerformEndsAt    *int64      `json:"performEndsAt"`
-	BetsCount        int         `json:"betsCount"`
-	BetPlacedBy      []int       `json:"betPlacedBy"`
-	You              *int        `json:"you"`
+	// Rescued lists the players the bank topped up after this challenge
+	// (see rescueThreshold); cleared at the next turn.
+	Rescued         []int  `json:"rescued"`
+	UsedSkillTasks  []int  `json:"usedSkillTasks"`
+	UsedMentalTasks []int  `json:"usedMentalTasks"`
+	PerformEndsAt   *int64 `json:"performEndsAt"`
+	BetsCount       int    `json:"betsCount"`
+	BetPlacedBy     []int  `json:"betPlacedBy"`
+	You             *int   `json:"you"`
+	// ServerNow is the server's clock at the moment of the response, so
+	// clients can run countdowns against server time rather than their own
+	// (possibly skewed) clocks.
+	ServerNow int64 `json:"serverNow"`
 }
 
 type Game struct {
@@ -162,6 +175,7 @@ func sanitizeState(state GameState, viewerID *int) GameState {
 	}
 	out.BetPlacedBy = placedBy
 	out.You = viewerID
+	out.ServerNow = nowMs()
 
 	// A mental task is a puzzle the current player could start solving the
 	// moment they read it, so they only get to see it once everyone else
@@ -624,6 +638,13 @@ func handleResult(w http.ResponseWriter, r *http.Request, id string) {
 	if req.Success {
 		g.state.Players[g.state.CurrentPlayerIdx].Money += total
 	}
+	g.state.Rescued = []int{}
+	for i := range g.state.Players {
+		if g.state.Players[i].Money <= rescueThreshold {
+			g.state.Players[i].Money += rescueAmount
+			g.state.Rescued = append(g.state.Rescued, i)
+		}
+	}
 	success := req.Success
 	g.state.TaskSuccess = &success
 	g.state.ShowResults = true
@@ -649,6 +670,7 @@ func handleNextTurn(w http.ResponseWriter, r *http.Request, id string) {
 	g.state.Bets = map[int]Bet{}
 	g.state.ShowResults = false
 	g.state.TaskSuccess = nil
+	g.state.Rescued = nil
 	g.state.Phase = "playing"
 	g.state.BlindBetTaskType = nil
 	g.state.PerformEndsAt = nil

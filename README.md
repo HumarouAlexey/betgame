@@ -59,6 +59,9 @@ address instead. The code doesn't change — only where you run the binary.
   challenge — skill, mental or blind bet — is dealt from a shuffled bag of
   six (two of each), so no kind comes up more than twice in a row and a
   blind bet is never more than eight challenges away.
+- A player who ends a challenge with €10 or less (in practice €5–10, since
+  a lost bet can't take anyone lower) is topped up with €100 by the bank,
+  with a message on the results screen.
 - Bets are private: each phone only ever sees the bet it placed itself.
   Other players show up as "thinking…" / "bet placed" until the
   challenge is judged, at which point everyone's bet and payout are
