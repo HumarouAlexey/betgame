@@ -68,6 +68,9 @@ const STRINGS = {
     inviteTitle: 'Invite players',
     inviteHint: 'Scan the code or send the link.',
     standingsTitle: 'Standings',
+    logoLetter: 'T',
+    showStandings: 'Show standings',
+    backToGame: 'Back to game',
     noPlayersYet: 'Nobody has joined yet.',
     youBadge: 'You',
     startGame: 'Start Game',
@@ -168,6 +171,9 @@ const STRINGS = {
     inviteTitle: 'Пригласите игроков',
     inviteHint: 'Отсканируйте код или отправьте ссылку.',
     standingsTitle: 'Таблица',
+    logoLetter: 'Т',
+    showStandings: 'Показать таблицу',
+    backToGame: 'Вернуться к игре',
     noPlayersYet: 'Пока никто не присоединился.',
     youBadge: 'Вы',
     startGame: 'Начать игру',
@@ -387,25 +393,46 @@ const LanguageSwitcher = ({ lang, setLang }) => (
 );
 
 // Full-height page with a sticky header; every screen renders inside it.
-const AppShell = ({ lang, setLang, actions, children }) => (
-  <div className="flex min-h-[100dvh] flex-col bg-zinc-50 pb-[env(safe-area-inset-bottom)] font-sans text-zinc-900 antialiased">
-    <header className="sticky top-0 z-40 border-b border-zinc-200 bg-white/90 pt-[env(safe-area-inset-top)] backdrop-blur">
-      <div className="flex h-14 items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
-        <div className="flex min-w-0 items-center gap-2.5">
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-indigo-600 text-sm font-bold text-white">
-            {t(lang, 'title').charAt(0)}
-          </span>
-          <span className="truncate font-semibold">{t(lang, 'title')}</span>
+// When onLogoClick is given, the logo doubles as a toggle (e.g. for the
+// standings view) and logoActive shows whether that view is open.
+const AppShell = ({ lang, setLang, actions, onLogoClick, logoActive, logoLabel, children }) => {
+  const logo = (
+    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-indigo-600 text-sm font-bold text-white">
+      {t(lang, 'logoLetter')}
+    </span>
+  );
+  return (
+    <div className="flex min-h-[100dvh] flex-col bg-zinc-50 pb-[env(safe-area-inset-bottom)] font-sans text-zinc-900 antialiased">
+      <header className="sticky top-0 z-40 border-b border-zinc-200 bg-white/90 pt-[env(safe-area-inset-top)] backdrop-blur">
+        <div className="flex h-14 items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
+          <div className="flex min-w-0 items-center gap-2.5">
+            {onLogoClick ? (
+              <button
+                type="button"
+                onClick={onLogoClick}
+                aria-pressed={!!logoActive}
+                aria-label={logoLabel}
+                title={logoLabel}
+                className={cx(
+                  'shrink-0 rounded-lg transition focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2',
+                  logoActive ? 'ring-2 ring-indigo-600 ring-offset-2' : 'hover:opacity-85'
+                )}
+              >
+                {logo}
+              </button>
+            ) : logo}
+            <span className="truncate font-semibold">{t(lang, 'title')}</span>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            {actions}
+            <LanguageSwitcher lang={lang} setLang={setLang} />
+          </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {actions}
-          <LanguageSwitcher lang={lang} setLang={setLang} />
-        </div>
-      </div>
-    </header>
-    <main className="w-full flex-1 px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">{children}</main>
-  </div>
-);
+      </header>
+      <main className="w-full flex-1 px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">{children}</main>
+    </div>
+  );
+};
 
 // Main column plus a side column that drops below it on narrow screens.
 const TwoColumn = ({ main, side }) => (
@@ -717,6 +744,18 @@ const BetYouCantGame = () => {
   const [copied, setCopied] = useState(false);
   // Which irreversible action is waiting for a yes: 'start', 'end' or null.
   const [confirming, setConfirming] = useState(null);
+  // The logo toggles a full-page standings view. The game stays mounted
+  // underneath (just hidden), so a half-typed bet survives the round trip,
+  // and the scroll position is put back on the way out.
+  const [showingStandings, setShowingStandings] = useState(false);
+  const savedScrollRef = React.useRef(0);
+  const toggleStandings = () => {
+    if (!showingStandings) savedScrollRef.current = window.scrollY;
+    setShowingStandings(v => !v);
+  };
+  React.useLayoutEffect(() => {
+    window.scrollTo(0, showingStandings ? 0 : savedScrollRef.current);
+  }, [showingStandings]);
 
   const [lang, setLang] = useState(() => {
     try {
@@ -991,8 +1030,8 @@ const BetYouCantGame = () => {
     );
   };
 
-  const shell = (children, actions) => (
-    <AppShell lang={lang} setLang={setLang} actions={actions}>{children}</AppShell>
+  const shell = (children, actions, logoProps) => (
+    <AppShell lang={lang} setLang={setLang} actions={actions} {...logoProps}>{children}</AppShell>
   );
 
   if (apiError && !gs) {
@@ -1333,8 +1372,14 @@ const BetYouCantGame = () => {
   }
 
   return shell(
-    <TwoColumn
-      main={<>
+    <>
+      {showingStandings && (
+        <div className="mx-auto w-full max-w-2xl space-y-4">
+          <Standings players={gs.players} currentId={gs.currentPlayerIndex} myId={myPlayerId} lang={lang} />
+          <Button variant="secondary" block onClick={toggleStandings}>{t(lang, 'backToGame')}</Button>
+        </div>
+      )}
+      <div className={cx('space-y-4 lg:space-y-6', showingStandings && 'hidden')}>
         {renderJoinBar()}
         {apiError && <Notice tone="danger">{apiError}</Notice>}
         {phaseView}
@@ -1348,10 +1393,14 @@ const BetYouCantGame = () => {
             onCancel={() => setConfirming(null)}
           />
         )}
-      </>}
-      side={<Standings players={gs.players} currentId={gs.currentPlayerIndex} myId={myPlayerId} lang={lang} />}
-    />,
-    iAmCurrent && <Button variant="ghost" size="sm" onClick={() => setConfirming('end')}>{t(lang, 'endGame')}</Button>
+      </div>
+    </>,
+    iAmCurrent && <Button variant="ghost" size="sm" onClick={() => setConfirming('end')}>{t(lang, 'endGame')}</Button>,
+    {
+      onLogoClick: toggleStandings,
+      logoActive: showingStandings,
+      logoLabel: showingStandings ? t(lang, 'backToGame') : t(lang, 'showStandings'),
+    }
   );
 };
 
