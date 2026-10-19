@@ -23,9 +23,12 @@ It starts on port 8080 and prints the addresses to use:
 
 Open the WiFi address on your own phone/laptop as the host (make sure your
 phone and the players' phones are all on the same WiFi network as whichever
-machine runs this binary). Set up the game, then share each player's QR
-code / link — those are now real, permanent addresses on your network, so
-they'll load directly with no sign-in step.
+machine runs this binary) and create a game. The lobby shows one QR code /
+link for the game; everyone opens it on their own phone, taps "Join the
+Game" and types their name. The lobby's player list updates live, and the
+host starts the game from the same screen. The same link keeps working
+after the start: a late joiner takes the last seat in the turn order and
+starts with €100.
 
 ## Playing over the internet instead of local WiFi
 
@@ -50,8 +53,10 @@ address instead. The code doesn't change — only where you run the binary.
   action any player can do, so the group can agree on it together.
 - Starting the game itself is a separate role: whoever's phone created
   the game is the host, and only that phone (identified by a secret
-  token kept in its URL) can start it. Don't share the host's own link
-  — the QR codes and links generated for players don't carry that token.
+  token kept in its URL) can start it. Don't share the host's own
+  address bar — the lobby's QR code / link doesn't carry that token.
+- Mental tasks stay hidden from the player performing them until every
+  other player has bet, so they can't get a head start on the puzzle.
 - Bets are private: each phone only ever sees the bet it placed itself.
   Other players show up as "thinking…" / "✓ bet placed" until the
   challenge is judged, at which point everyone's bet and payout are

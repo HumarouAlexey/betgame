@@ -18,6 +18,7 @@
 const { useState, useEffect } = React;
 
 const MIN_BET = 5;
+const STARTING_MONEY = 100;
 
 // ---- i18n ----
 const STRINGS = {
@@ -39,28 +40,28 @@ const STRINGS = {
     cantReachTitle: "Can't reach the game",
     retry: 'Retry',
     loadingGame: 'Loading game…',
-    numPlayersLabel: 'Number of Players (2-12)',
     gameDurationLabel: 'Game Duration (minutes)',
-    nextSetNames: 'Next: Set Player Names',
     howToPlayTitle: 'How to Play:',
     howToPlay1: 'Roll dice and move around the board',
     howToPlay2: 'Complete skill or mental challenges',
     howToPlay3: 'Bet on whether others will succeed',
     howToPlay4: 'Collect the most money to win!',
-    back: '← Back',
-    enterPlayerNames: 'Enter Player Names',
-    playerLabel: (n) => `Player ${n}`,
     createGame: 'Create Game',
-    leaveBlankDefault: 'Leave blank to use default names',
-    lobbyIntro: "Each player scans their own QR code (or taps their name below) on their own phone. Only the host can start the game once everyone's in.",
+    lobbyIntro: 'Everyone opens this link or scans the QR code on their own phone and joins under their name.',
     youAreIn: (name) => `You're in as ${name} ✅`,
-    tapYourName: 'Playing on this phone? Tap your name:',
-    qrAlt: (name) => `QR code for ${name}`,
+    joinGame: 'Join the Game',
+    joinLateHint: (money) => `The game is on — join now and start with €${money}.`,
+    yourName: 'Your name',
+    joinBtn: 'Join',
+    cancel: 'Cancel',
+    qrAlt: 'QR code for the game link',
     copied: 'Copied ✓',
     copyLink: 'Copy Link',
+    playersJoined: (n) => `Players (${n}):`,
+    noPlayersYet: 'Nobody has joined yet.',
+    youMark: '(you)',
     startGame: 'Start Game ▶',
     waitingHostStart: 'Waiting for the host to start the game…',
-    hostHasLinks: "The host's screen has everyone's personal join link and QR code.",
     sameNetworkNote: "Players need to be on the same WiFi network as this server (or reach its address over the internet).",
     gameOverTitle: 'Game Over!',
     winnerLabel: (name) => `Winner: ${name}`,
@@ -70,6 +71,7 @@ const STRINGS = {
     current: '(current)',
     yourTurn: 'Your turn!',
     turnOf: (name) => `${name}'s Turn`,
+    taskHiddenUntilBets: "You'll see the task once everyone has bet.",
     rolled: (v) => `Rolled: ${v}`,
     rollDice: 'Roll Dice',
     waitingRoll: (name) => `Waiting on ${name} to roll…`,
@@ -134,28 +136,28 @@ const STRINGS = {
     cantReachTitle: 'Не удаётся подключиться к игре',
     retry: 'Повторить',
     loadingGame: 'Загрузка игры…',
-    numPlayersLabel: 'Количество игроков (2–12)',
     gameDurationLabel: 'Длительность игры (минут)',
-    nextSetNames: 'Далее: указать имена игроков',
     howToPlayTitle: 'Как играть:',
     howToPlay1: 'Бросай кубик и двигайся по полю',
     howToPlay2: 'Выполняй задания на ловкость или смекалку',
     howToPlay3: 'Делай ставки на успех других игроков',
     howToPlay4: 'Собери больше всех денег и победи!',
-    back: '← Назад',
-    enterPlayerNames: 'Введите имена игроков',
-    playerLabel: (n) => `Игрок ${n}`,
     createGame: 'Создать игру',
-    leaveBlankDefault: 'Оставьте пустым, чтобы использовать имена по умолчанию',
-    lobbyIntro: 'Каждый игрок сканирует свой QR-код (или нажимает на своё имя ниже) на своём телефоне. Начать игру, когда все в сборе, может только хост.',
+    lobbyIntro: 'Каждый открывает эту ссылку или сканирует QR-код на своём телефоне и присоединяется под своим именем.',
     youAreIn: (name) => `Вы вошли как ${name} ✅`,
-    tapYourName: 'Играете с этого телефона? Нажмите на своё имя:',
-    qrAlt: (name) => `QR-код для ${name}`,
+    joinGame: 'Присоединиться к игре',
+    joinLateHint: (money) => `Игра уже идёт — присоединяйтесь, у вас будет €${money}.`,
+    yourName: 'Ваше имя',
+    joinBtn: 'Войти',
+    cancel: 'Отмена',
+    qrAlt: 'QR-код со ссылкой на игру',
     copied: 'Скопировано ✓',
     copyLink: 'Скопировать ссылку',
+    playersJoined: (n) => `Игроки (${n}):`,
+    noPlayersYet: 'Пока никто не присоединился.',
+    youMark: '(вы)',
     startGame: 'Начать игру ▶',
     waitingHostStart: 'Ожидание, пока хост начнёт игру…',
-    hostHasLinks: 'Личные ссылки и QR-коды всех игроков есть на экране хоста.',
     sameNetworkNote: 'Игроки должны быть в той же Wi-Fi сети, что и сервер (или иметь доступ к его адресу через интернет).',
     gameOverTitle: 'Игра окончена!',
     winnerLabel: (name) => `Победитель: ${name}`,
@@ -165,6 +167,7 @@ const STRINGS = {
     current: '(ходит)',
     yourTurn: 'Ваш ход!',
     turnOf: (name) => `Ход игрока ${name}`,
+    taskHiddenUntilBets: 'Задание откроется, когда все сделают ставки.',
     rolled: (v) => `Выпало: ${v}`,
     rollDice: 'Бросить кубик',
     waitingRoll: (name) => `Ожидание, пока ${name} бросит кубик…`,
@@ -234,6 +237,62 @@ const LanguageSwitcher = ({ lang, setLang }) => (
     </button>
   </div>
 );
+
+// One button that opens into a name field, so joining is a single obvious
+// action whether it happens in the lobby or in the middle of a game.
+const JoinForm = ({ onJoin, error, lang }) => {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState('');
+  const [busy, setBusy] = useState(false);
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!name.trim() || busy) return;
+    setBusy(true);
+    await onJoin(name.trim());
+    setBusy(false);
+  };
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="w-full bg-yellow-400 py-3 rounded-lg font-bold text-lg hover:bg-yellow-500 transition"
+      >
+        {t(lang, 'joinGame')}
+      </button>
+    );
+  }
+  return (
+    <form onSubmit={submit} className="space-y-2">
+      <input
+        type="text"
+        autoFocus
+        maxLength={24}
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder={t(lang, 'yourName')}
+        className="w-full px-4 py-3 border-2 border-purple-300 rounded-lg focus:border-purple-500 outline-none text-lg"
+      />
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          className="px-4 py-3 bg-gray-100 text-gray-700 rounded-lg font-semibold hover:bg-gray-200"
+        >
+          {t(lang, 'cancel')}
+        </button>
+        <button
+          type="submit"
+          disabled={!name.trim() || busy}
+          className="flex-1 bg-purple-600 text-white py-3 rounded-lg font-bold text-lg hover:bg-purple-700 disabled:bg-gray-400"
+        >
+          {t(lang, 'joinBtn')}
+        </button>
+      </div>
+      {error && <p className="text-red-600 text-sm text-center">{error}</p>}
+    </form>
+  );
+};
 
 const BetForm = ({ player, onBet, error, lang }) => {
   const [amount, setAmount] = useState('');
@@ -452,7 +511,7 @@ const BetYouCantGame = () => {
 
   // ---- Connection / game identity ----
   // `p` in the URL is a player's long, unguessable secret token (issued by
-  // the server via /claim or, for the host, at game creation) — never the
+  // the server when this phone joined the game) — never the
   // player's small array index. That's what stops someone from "becoming"
   // another player just by editing a digit in the URL.
   const params = new URLSearchParams(window.location.search);
@@ -467,48 +526,15 @@ const BetYouCantGame = () => {
   // keep indexing gs.players[myPlayerId] as before.
   const [myPlayerId, setMyPlayerId] = useState(null);
   const [adminToken, setAdminToken] = useState(urlAdminToken || null);
-  // Only the host receives the real per-player tokens (in the createGame
-  // response), used to build everyone's personal join link/QR. Nobody else
-  // ever sees another player's token.
-  const [playerTokens, setPlayerTokens] = useState([]);
   const isAdmin = !!adminToken;
   const [gs, setGs] = useState(null);
   const [loading, setLoading] = useState(!!urlGameId);
   const [apiError, setApiError] = useState(null);
   const [betError, setBetError] = useState(null);
   const [now, setNow] = useState(Date.now());
-  const [localSetup, setLocalSetup] = useState({
-    numPlayers: 3,
-    gameTime: 30,
-    playerNames: ['', '', ''],
-    setupStep: 'config'
-  });
-  const [copiedId, setCopiedId] = useState(null);
-
-  // ---- Host's swipeable player-QR carousel (lobby) ----
-  const [qrIndex, setQrIndex] = useState(0);
-  const [qrDragX, setQrDragX] = useState(0);
-  const [qrDragging, setQrDragging] = useState(false);
-  const qrTouchStartX = React.useRef(null);
-  const handleQrTouchStart = (e) => {
-    qrTouchStartX.current = e.touches[0].clientX;
-    setQrDragging(true);
-  };
-  const handleQrTouchMove = (e) => {
-    if (qrTouchStartX.current === null) return;
-    setQrDragX(e.touches[0].clientX - qrTouchStartX.current);
-  };
-  const handleQrTouchEnd = (numPlayers) => {
-    const threshold = 50;
-    if (qrDragX <= -threshold) {
-      setQrIndex(i => Math.min(numPlayers - 1, i + 1));
-    } else if (qrDragX >= threshold) {
-      setQrIndex(i => Math.max(0, i - 1));
-    }
-    qrTouchStartX.current = null;
-    setQrDragX(0);
-    setQrDragging(false);
-  };
+  const [gameTime, setGameTime] = useState(30);
+  const [joinError, setJoinError] = useState(null);
+  const [copied, setCopied] = useState(false);
 
   const [lang, setLang] = useState(() => {
     try {
@@ -536,44 +562,44 @@ const BetYouCantGame = () => {
     return `?${p.toString()}`;
   };
 
-  // Claims an unclaimed player slot by tapping its name: the server hands
-  // back that player's secret token exactly once (refusing if someone
-  // already claimed it), which we then use as our identity going forward.
-  const claimPlayer = async (id) => {
+  // Joins under the typed name: the server adds us as a new player and
+  // hands back our secret token, which we then use as our identity.
+  const joinGame = async (name) => {
+    setJoinError(null);
     try {
-      const res = await fetch(`${apiBase()}/${gameId}/claim?lang=${lang}`, {
+      const res = await fetch(`${apiBase()}/${gameId}/join?lang=${lang}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ playerId: id })
+        body: JSON.stringify({ name })
       });
       const data = await res.json();
       if (!res.ok) {
-        setApiError(data.error || t(lang, 'somethingWrong'));
+        setJoinError(data.error || t(lang, 'somethingWrong'));
         return;
       }
       setMyToken(data.token);
+      setGs(data.state);
       const url = new URL(window.location.href);
       url.searchParams.set('p', data.token);
       window.history.replaceState(null, '', url.toString());
     } catch (e) {
-      setApiError(t(lang, 'connectionError'));
+      setJoinError(t(lang, 'connectionError'));
     }
   };
 
-  // Only meaningful for the host: builds a player's personal join link
-  // using the real secret token the server returned at game creation.
-  const getShareUrl = (playerId) => {
+  // The one link everyone shares. It never carries the host's token or
+  // anyone's player token — each phone gets its own token by joining.
+  const getShareUrl = () => {
     const url = new URL(window.location.origin + window.location.pathname);
     url.searchParams.set('g', gameId);
-    url.searchParams.set('p', playerTokens[playerId] || '');
     return url.toString();
   };
 
   const getQrImageUrl = (url) =>
     `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(url)}`;
 
-  const copyLink = async (playerId) => {
-    const url = getShareUrl(playerId);
+  const copyLink = async () => {
+    const url = getShareUrl();
     try {
       await navigator.clipboard.writeText(url);
     } catch (e) {
@@ -588,8 +614,8 @@ const BetYouCantGame = () => {
         document.body.removeChild(ta);
       } catch (e2) {}
     }
-    setCopiedId(playerId);
-    setTimeout(() => setCopiedId(prev => (prev === playerId ? null : prev)), 2000);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   // ---- Polling ----
@@ -721,11 +747,7 @@ const BetYouCantGame = () => {
       const res = await fetch(`${apiBase()}/${viewerQuery()}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          numPlayers: localSetup.numPlayers,
-          gameTimeMinutes: localSetup.gameTime,
-          playerNames: localSetup.playerNames
-        })
+        body: JSON.stringify({ gameTimeMinutes: gameTime })
       });
       const data = await res.json();
       if (!res.ok) {
@@ -735,7 +757,6 @@ const BetYouCantGame = () => {
       setGameId(data.gameId);
       setGs(data.state);
       setAdminToken(data.adminToken);
-      setPlayerTokens(data.playerTokens || []);
       const url = new URL(window.location.href);
       url.searchParams.set('g', data.gameId);
       url.searchParams.set('a', data.adminToken);
@@ -777,19 +798,9 @@ const BetYouCantGame = () => {
   const renderJoinBar = () => {
     if (myPlayerId !== null || !gs || !gs.players) return null;
     return (
-      <div className="bg-yellow-50 border-2 border-yellow-400 rounded-lg p-3 mb-4 text-center">
-        <p className="font-semibold mb-2 text-sm">{t(lang, 'tapYourName')}</p>
-        <div className="flex flex-wrap gap-2 justify-center">
-          {gs.players.map(p => (
-            <button
-              key={p.id}
-              onClick={() => claimPlayer(p.id)}
-              className="px-3 py-1 bg-yellow-400 rounded-lg font-semibold hover:bg-yellow-500 text-sm"
-            >
-              {p.name}
-            </button>
-          ))}
-        </div>
+      <div className="bg-yellow-50 border-2 border-yellow-400 rounded-lg p-3 mt-4">
+        <p className="font-semibold mb-2 text-sm text-center">{t(lang, 'joinLateHint', STARTING_MONEY)}</p>
+        <JoinForm onJoin={joinGame} error={joinError} lang={lang} />
       </div>
     );
   };
@@ -823,119 +834,47 @@ const BetYouCantGame = () => {
         <div className="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full">
           <h1 className="text-4xl font-bold text-center mb-6 text-purple-600">{t(lang, 'title')}</h1>
 
-          {localSetup.setupStep === 'config' && (
-            <div className="space-y-6">
-              <div>
-                <label className="block text-gray-700 font-semibold mb-2">{t(lang, 'numPlayersLabel')}</label>
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setLocalSetup(prev => {
-                      const n = Math.max(2, prev.numPlayers - 1);
-                      return { ...prev, numPlayers: n, playerNames: Array.from({ length: n }, (_, i) => prev.playerNames[i] || '') };
-                    })}
-                    disabled={localSetup.numPlayers <= 2}
-                    className="w-12 h-12 shrink-0 flex items-center justify-center text-2xl font-bold bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 active:bg-purple-300 disabled:opacity-40 disabled:hover:bg-purple-100"
-                  >
-                    −
-                  </button>
-                  <span className="flex-1 text-center text-2xl font-bold text-gray-800">{localSetup.numPlayers}</span>
-                  <button
-                    type="button"
-                    onClick={() => setLocalSetup(prev => {
-                      const n = Math.min(12, prev.numPlayers + 1);
-                      return { ...prev, numPlayers: n, playerNames: Array.from({ length: n }, (_, i) => prev.playerNames[i] || '') };
-                    })}
-                    disabled={localSetup.numPlayers >= 12}
-                    className="w-12 h-12 shrink-0 flex items-center justify-center text-2xl font-bold bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 active:bg-purple-300 disabled:opacity-40 disabled:hover:bg-purple-100"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-gray-700 font-semibold mb-2">{t(lang, 'gameDurationLabel')}</label>
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setLocalSetup(prev => ({ ...prev, gameTime: Math.max(10, prev.gameTime - 5) }))}
-                    disabled={localSetup.gameTime <= 10}
-                    className="w-12 h-12 shrink-0 flex items-center justify-center text-2xl font-bold bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 active:bg-purple-300 disabled:opacity-40 disabled:hover:bg-purple-100"
-                  >
-                    −
-                  </button>
-                  <span className="flex-1 text-center text-2xl font-bold text-gray-800">{localSetup.gameTime}</span>
-                  <button
-                    type="button"
-                    onClick={() => setLocalSetup(prev => ({ ...prev, gameTime: Math.min(90, prev.gameTime + 5) }))}
-                    disabled={localSetup.gameTime >= 90}
-                    className="w-12 h-12 shrink-0 flex items-center justify-center text-2xl font-bold bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 active:bg-purple-300 disabled:opacity-40 disabled:hover:bg-purple-100"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setLocalSetup(prev => ({ ...prev, setupStep: 'names' }))}
-                className="w-full bg-purple-600 text-white py-3 rounded-lg font-bold text-lg hover:bg-purple-700 transition"
-              >
-                {t(lang, 'nextSetNames')}
-              </button>
-
-              <div className="p-4 bg-purple-50 rounded-lg text-sm text-gray-700">
-                <p className="font-semibold mb-2">{t(lang, 'howToPlayTitle')}</p>
-                <ul className="list-disc list-inside space-y-1">
-                  <li>{t(lang, 'howToPlay1')}</li>
-                  <li>{t(lang, 'howToPlay2')}</li>
-                  <li>{t(lang, 'howToPlay3')}</li>
-                  <li>{t(lang, 'howToPlay4')}</li>
-                </ul>
+          <div className="space-y-6">
+            <div>
+              <label className="block text-gray-700 font-semibold mb-2">{t(lang, 'gameDurationLabel')}</label>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setGameTime(m => Math.max(10, m - 5))}
+                  disabled={gameTime <= 10}
+                  className="w-12 h-12 shrink-0 flex items-center justify-center text-2xl font-bold bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 active:bg-purple-300 disabled:opacity-40 disabled:hover:bg-purple-100"
+                >
+                  −
+                </button>
+                <span className="flex-1 text-center text-2xl font-bold text-gray-800">{gameTime}</span>
+                <button
+                  type="button"
+                  onClick={() => setGameTime(m => Math.min(90, m + 5))}
+                  disabled={gameTime >= 90}
+                  className="w-12 h-12 shrink-0 flex items-center justify-center text-2xl font-bold bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 active:bg-purple-300 disabled:opacity-40 disabled:hover:bg-purple-100"
+                >
+                  +
+                </button>
               </div>
             </div>
-          )}
 
-          {localSetup.setupStep === 'names' && (
-            <div className="space-y-6">
-              <button
-                onClick={() => setLocalSetup(prev => ({ ...prev, setupStep: 'config' }))}
-                className="text-purple-600 hover:text-purple-700 font-semibold mb-2"
-              >
-                {t(lang, 'back')}
-              </button>
+            <button
+              onClick={createGame}
+              className="w-full bg-purple-600 text-white py-3 rounded-lg font-bold text-lg hover:bg-purple-700 transition"
+            >
+              {t(lang, 'createGame')}
+            </button>
 
-              <h2 className="text-2xl font-bold text-gray-800 mb-4">{t(lang, 'enterPlayerNames')}</h2>
-
-              <div className="space-y-3">
-                {Array.from({ length: localSetup.numPlayers }).map((_, index) => (
-                  <div key={index}>
-                    <label className="block text-gray-700 font-semibold mb-1">{t(lang, 'playerLabel', index + 1)}</label>
-                    <input
-                      type="text"
-                      value={localSetup.playerNames[index] || ''}
-                      onChange={(e) => {
-                        const names = [...localSetup.playerNames];
-                        names[index] = e.target.value;
-                        setLocalSetup(prev => ({ ...prev, playerNames: names }));
-                      }}
-                      placeholder={t(lang, 'playerLabel', index + 1)}
-                      className="w-full px-4 py-2 border-2 border-purple-300 rounded-lg focus:border-purple-500 outline-none"
-                    />
-                  </div>
-                ))}
-              </div>
-
-              <button
-                onClick={createGame}
-                className="w-full bg-purple-600 text-white py-3 rounded-lg font-bold text-lg hover:bg-purple-700 transition"
-              >
-                {t(lang, 'createGame')}
-              </button>
-
-              <p className="text-sm text-gray-500 text-center">{t(lang, 'leaveBlankDefault')}</p>
+            <div className="p-4 bg-purple-50 rounded-lg text-sm text-gray-700">
+              <p className="font-semibold mb-2">{t(lang, 'howToPlayTitle')}</p>
+              <ul className="list-disc list-inside space-y-1">
+                <li>{t(lang, 'howToPlay1')}</li>
+                <li>{t(lang, 'howToPlay2')}</li>
+                <li>{t(lang, 'howToPlay3')}</li>
+                <li>{t(lang, 'howToPlay4')}</li>
+              </ul>
             </div>
-          )}
+          </div>
           {apiError && <p className="text-red-600 text-sm text-center mt-3">{apiError}</p>}
         </div>
       </div>
@@ -950,86 +889,55 @@ const BetYouCantGame = () => {
             {t(lang, 'lobbyIntro')}
           </p>
 
-          {isMe ? (
-            <div className="bg-green-50 border-2 border-green-400 rounded-lg p-4 mb-6 text-center">
-              <p className="font-bold text-green-700">{t(lang, 'youAreIn', gs.players[myPlayerId].name)}</p>
-            </div>
-          ) : renderJoinBar()}
+          <div className="mb-6 text-center">
+            <img
+              src={getQrImageUrl(getShareUrl())}
+              alt={t(lang, 'qrAlt')}
+              className="mx-auto mb-2 rounded"
+              width={160}
+              height={160}
+            />
+            <button
+              onClick={copyLink}
+              className="w-full mb-2 px-3 py-1.5 bg-purple-100 text-purple-700 text-sm font-semibold rounded-lg hover:bg-purple-200"
+            >
+              {copied ? t(lang, 'copied') : t(lang, 'copyLink')}
+            </button>
+            <p className="text-xs text-gray-500 break-all">{getShareUrl()}</p>
+          </div>
 
-          {isAdmin ? (
-            <div className="mb-6">
-              <div
-                className="overflow-hidden rounded-lg border-2 border-purple-200 touch-pan-y"
-                onTouchStart={handleQrTouchStart}
-                onTouchMove={handleQrTouchMove}
-                onTouchEnd={() => handleQrTouchEnd(gs.players.length)}
-              >
-                <div
-                  className="flex"
-                  style={{
-                    transform: `translateX(calc(${-qrIndex * 100}% + ${qrDragX}px))`,
-                    transition: qrDragging ? 'none' : 'transform 300ms ease-out'
-                  }}
-                >
-                  {gs.players.map(p => (
-                    <div key={p.id} className="w-full shrink-0 p-4 text-center">
-                      <p className="font-semibold mb-2">{p.name}</p>
-                      <img
-                        src={getQrImageUrl(getShareUrl(p.id))}
-                        alt={t(lang, 'qrAlt', p.name)}
-                        className="mx-auto mb-2 rounded"
-                        width={140}
-                        height={140}
-                      />
-                      <button
-                        onClick={() => copyLink(p.id)}
-                        className="w-full mb-2 px-3 py-1.5 bg-purple-100 text-purple-700 text-sm font-semibold rounded-lg hover:bg-purple-200"
-                      >
-                        {copiedId === p.id ? t(lang, 'copied') : t(lang, 'copyLink')}
-                      </button>
-                      <p className="text-xs text-gray-500 break-all">{getShareUrl(p.id)}</p>
-                    </div>
-                  ))}
-                </div>
+          <div className="mb-6">
+            {isMe ? (
+              <div className="bg-green-50 border-2 border-green-400 rounded-lg p-4 text-center">
+                <p className="font-bold text-green-700">{t(lang, 'youAreIn', gs.players[myPlayerId].name)}</p>
               </div>
-              <div className="flex items-center justify-between mt-2">
-                <button
-                  type="button"
-                  onClick={() => setQrIndex(i => Math.max(0, i - 1))}
-                  disabled={qrIndex === 0}
-                  className="w-9 h-9 flex items-center justify-center text-xl font-bold text-purple-600 bg-purple-100 rounded-lg hover:bg-purple-200 disabled:opacity-30 disabled:hover:bg-purple-100"
-                >
-                  ‹
-                </button>
-                <div className="flex gap-1.5">
-                  {gs.players.map((p, i) => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => setQrIndex(i)}
-                      aria-label={p.name}
-                      className={`w-2.5 h-2.5 rounded-full ${i === qrIndex ? 'bg-purple-600' : 'bg-purple-200'}`}
-                    />
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setQrIndex(i => Math.min(gs.players.length - 1, i + 1))}
-                  disabled={qrIndex === gs.players.length - 1}
-                  className="w-9 h-9 flex items-center justify-center text-xl font-bold text-purple-600 bg-purple-100 rounded-lg hover:bg-purple-200 disabled:opacity-30 disabled:hover:bg-purple-100"
-                >
-                  ›
-                </button>
-              </div>
-            </div>
-          ) : !isMe && (
-            <p className="text-sm text-gray-500 text-center mb-6">{t(lang, 'hostHasLinks')}</p>
-          )}
+            ) : (
+              <JoinForm onJoin={joinGame} error={joinError} lang={lang} />
+            )}
+          </div>
+
+          <div className="bg-gray-50 rounded-lg p-4 mb-6">
+            <h3 className="font-bold mb-2">{t(lang, 'playersJoined', gs.players.length)}</h3>
+            {gs.players.length === 0 ? (
+              <p className="text-sm text-gray-500">{t(lang, 'noPlayersYet')}</p>
+            ) : (
+              <ul className="space-y-1">
+                {gs.players.map(p => (
+                  <li key={p.id} className="flex items-center gap-2">
+                    <span className="text-sm">👤</span>
+                    <span className="font-semibold">{p.name}</span>
+                    {p.id === myPlayerId && <span className="text-xs text-purple-600">{t(lang, 'youMark')}</span>}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
 
           {isAdmin ? (
             <button
               onClick={startTheGame}
-              className="w-full bg-purple-600 text-white py-3 rounded-lg font-bold text-lg hover:bg-purple-700 transition"
+              disabled={gs.players.length === 0}
+              className="w-full bg-purple-600 text-white py-3 rounded-lg font-bold text-lg hover:bg-purple-700 disabled:bg-gray-400 transition"
             >
               {t(lang, 'startGame')}
             </button>
@@ -1197,6 +1105,15 @@ const BetYouCantGame = () => {
 
           {(gs.phase === 'betting' || gs.phase === 'blindBetting') && (
             <div className="bg-white rounded-xl shadow-xl p-8">
+              {gs.phase === 'betting' && !currentTask && (
+                <>
+                  <h2 className="text-2xl font-bold mb-4 text-center">{t(lang, 'mentalChallenge')}</h2>
+                  <div className="bg-purple-50 p-6 rounded-lg mb-6">
+                    <p className="text-xl font-semibold text-center">🔒 {t(lang, 'taskHiddenUntilBets')}</p>
+                  </div>
+                </>
+              )}
+
               {gs.phase === 'betting' && currentTask && (
                 <>
                   <h2 className="text-2xl font-bold mb-4 text-center">

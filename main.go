@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/rand"
 	"embed"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/fs"
@@ -11,8 +12,10 @@ import (
 	mrand "math/rand"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 )
 
 //go:embed web/*
@@ -24,6 +27,8 @@ const (
 	skillTaskCount  = 67
 	mentalTaskCount = 67
 	minBetAmount    = 5
+	startingMoney   = 100
+	maxNameLength   = 24
 )
 
 type Player struct {
@@ -65,14 +70,9 @@ type Game struct {
 	adminToken string
 	// playerTokens[i] is player i's secret identity token, required as
 	// ?playerId= on every request made "as" that player. Never sent to
-	// clients as part of GameState — only handed out once via handleClaim
-	// (self-serve, one-time) or in the handleCreateGame response (host-only,
-	// used to build each player's personal share link/QR).
+	// clients as part of GameState — only handed out once, to the phone
+	// that joined as that player (see handleJoin).
 	playerTokens []string
-	// claimed[i] tracks whether handleClaim has already handed out
-	// playerTokens[i], so a second "tap your name" can't steal someone
-	// else's already-claimed identity.
-	claimed []bool
 }
 
 var (
@@ -82,14 +82,12 @@ var (
 
 func nowMs() int64 { return time.Now().UnixMilli() }
 
+// randomGameID returns a URL-safe base64 id, short enough to fit in a QR
+// code but long enough that nobody stumbles into someone else's game.
 func randomGameID() string {
-	const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789" // no 0/O/1/I
-	b := make([]byte, 5)
-	for i := range b {
-		n, _ := rand.Int(rand.Reader, big.NewInt(int64(len(alphabet))))
-		b[i] = alphabet[n.Int64()]
-	}
-	return string(b)
+	b := make([]byte, 9)
+	rand.Read(b)
+	return base64.RawURLEncoding.EncodeToString(b)
 }
 
 func randomToken(length int) string {
@@ -134,6 +132,14 @@ func sanitizeState(state GameState, viewerID *int) GameState {
 	}
 	out.BetPlacedBy = placedBy
 	out.You = viewerID
+
+	// A mental task is a puzzle the current player could start solving the
+	// moment they read it, so they only get to see it once everyone else
+	// has bet.
+	if state.Phase == "betting" && state.CurrentTaskType != nil && *state.CurrentTaskType == "mental" &&
+		viewerID != nil && *viewerID == state.CurrentPlayerIdx && len(state.Bets) < len(state.Players)-1 {
+		out.CurrentTaskIndex = nil
+	}
 
 	if state.ShowResults {
 		return out
@@ -199,7 +205,6 @@ type errMsg struct{ en, ru string }
 var errMessages = map[string]errMsg{
 	"gameNotFound":       {"game not found", "игра не найдена"},
 	"badBody":            {"bad request body", "некорректное тело запроса"},
-	"badNumPlayers":      {"invalid number of players", "недопустимое количество игроков"},
 	"onlyHostCanStart":   {"only the host can start the game", "начать игру может только хост"},
 	"onlyCurrentPlayer":  {"only the current player can do this", "это может сделать только текущий игрок"},
 	"invalidType":        {"invalid type", "недопустимый тип"},
@@ -210,7 +215,10 @@ var errMessages = map[string]errMsg{
 	"betTooMuch":         {"can't bet more than half your money", "нельзя ставить больше половины своих денег"},
 	"methodNotAllowed":   {"method not allowed", "метод не разрешён"},
 	"unknownRoute":       {"unknown route", "неизвестный маршрут"},
-	"alreadyClaimed":     {"this player has already been claimed by someone else", "этого игрока уже выбрал кто-то другой"},
+	"nameRequired":       {"enter your name", "введите своё имя"},
+	"nameTaken":          {"that name is already taken", "это имя уже занято"},
+	"gameAlreadyOver":    {"this game is already over", "эта игра уже закончилась"},
+	"noPlayers":          {"someone has to join before the game can start", "чтобы начать игру, кто-то должен присоединиться"},
 	"mustJoinFirst":      {"you must join the game as a player first", "сначала нужно присоединиться к игре"},
 }
 
@@ -245,44 +253,24 @@ func getGame(id string) (*Game, bool) {
 // ---- HTTP handlers ----
 
 type createGameReq struct {
-	NumPlayers      int      `json:"numPlayers"`
-	GameTimeMinutes int      `json:"gameTimeMinutes"`
-	PlayerNames     []string `json:"playerNames"`
+	GameTimeMinutes int `json:"gameTimeMinutes"`
 }
 
+// handleCreateGame opens an empty lobby. Players add themselves through
+// handleJoin — including the host, who only differs by holding adminToken.
 func handleCreateGame(w http.ResponseWriter, r *http.Request) {
 	var req createGameReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeErrKey(w, r, 400, "badBody")
 		return
 	}
-	if req.NumPlayers < 2 || req.NumPlayers > 12 {
-		writeErrKey(w, r, 400, "badNumPlayers")
-		return
-	}
 	if req.GameTimeMinutes <= 0 {
 		req.GameTimeMinutes = 30
 	}
 
-	players := make([]Player, req.NumPlayers)
-	for i := 0; i < req.NumPlayers; i++ {
-		name := ""
-		if i < len(req.PlayerNames) {
-			name = req.PlayerNames[i]
-		}
-		if name == "" {
-			if r.URL.Query().Get("lang") == "ru" {
-				name = fmt.Sprintf("Игрок %d", i+1)
-			} else {
-				name = fmt.Sprintf("Player %d", i+1)
-			}
-		}
-		players[i] = Player{ID: i, Name: name, Money: 100, Position: 0}
-	}
-
 	state := GameState{
 		Phase:            "lobby",
-		Players:          players,
+		Players:          []Player{},
 		CurrentPlayerIdx: 0,
 		Bets:             map[int]Bet{},
 		UsedSkillTasks:   []int{},
@@ -291,10 +279,6 @@ func handleCreateGame(w http.ResponseWriter, r *http.Request) {
 	}
 
 	adminToken := randomToken(24)
-	playerTokens := make([]string, req.NumPlayers)
-	for i := range playerTokens {
-		playerTokens[i] = randomToken(24)
-	}
 
 	gamesMu.Lock()
 	var id string
@@ -307,19 +291,14 @@ func handleCreateGame(w http.ResponseWriter, r *http.Request) {
 	games[id] = &Game{
 		state:        state,
 		adminToken:   adminToken,
-		playerTokens: playerTokens,
-		claimed:      make([]bool, req.NumPlayers),
+		playerTokens: []string{},
 	}
 	gamesMu.Unlock()
 
-	// playerTokens is returned only here, directly to the game's creator —
-	// it's what lets the host build each player's personal join link/QR
-	// without anyone having to guess or intercept another player's secret.
 	writeJSON(w, map[string]interface{}{
-		"gameId":       id,
-		"adminToken":   adminToken,
-		"playerTokens": playerTokens,
-		"state":        sanitizeState(state, nil),
+		"gameId":     id,
+		"adminToken": adminToken,
+		"state":      sanitizeState(state, nil),
 	})
 }
 
@@ -352,6 +331,10 @@ func handleStart(w http.ResponseWriter, r *http.Request, id string) {
 		writeErrKey(w, r, 403, "onlyHostCanStart")
 		return
 	}
+	if len(g.state.Players) == 0 {
+		writeErrKey(w, r, 400, "noPlayers")
+		return
+	}
 	if g.state.Phase == "lobby" {
 		g.state.Phase = "playing"
 		ends := nowMs() + int64(g.state.GameTimeMinutes)*60000
@@ -360,38 +343,53 @@ func handleStart(w http.ResponseWriter, r *http.Request, id string) {
 	respondState(w, r, g)
 }
 
-type claimReq struct {
-	PlayerID int `json:"playerId"`
+type joinReq struct {
+	Name string `json:"name"`
 }
 
-// handleClaim lets a player who only has the shared game link (no personal
-// token yet) tap their own name once to receive their secret identity
-// token. Each player slot can only be claimed this way once, so a second
-// visitor can't later tap the same name and get handed someone else's
-// token.
-func handleClaim(w http.ResponseWriter, r *http.Request, id string) {
+// handleJoin adds a new player under the name they typed and hands back
+// their secret identity token. It works in the lobby and mid-game alike: a
+// late joiner simply takes the last seat in the turn order with the same
+// starting money everyone else began with.
+func handleJoin(w http.ResponseWriter, r *http.Request, id string) {
 	g, ok := getGame(id)
 	if !ok {
 		writeErrKey(w, r, 404, "gameNotFound")
 		return
 	}
-	var req claimReq
+	var req joinReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeErrKey(w, r, 400, "badRequest")
 		return
 	}
+	name := strings.TrimSpace(req.Name)
+	if name == "" {
+		writeErrKey(w, r, 400, "nameRequired")
+		return
+	}
+	if utf8.RuneCountInString(name) > maxNameLength {
+		name = string([]rune(name)[:maxNameLength])
+	}
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	if req.PlayerID < 0 || req.PlayerID >= len(g.playerTokens) {
-		writeErrKey(w, r, 400, "invalidPlayer")
+	if g.state.Phase == "gameOver" {
+		writeErrKey(w, r, 409, "gameAlreadyOver")
 		return
 	}
-	if g.claimed[req.PlayerID] {
-		writeErrKey(w, r, 409, "alreadyClaimed")
-		return
+	for _, p := range g.state.Players {
+		if strings.EqualFold(p.Name, name) {
+			writeErrKey(w, r, 409, "nameTaken")
+			return
+		}
 	}
-	g.claimed[req.PlayerID] = true
-	writeJSON(w, map[string]string{"token": g.playerTokens[req.PlayerID]})
+	idx := len(g.state.Players)
+	g.state.Players = append(g.state.Players, Player{ID: idx, Name: name, Money: startingMoney, Position: 0})
+	token := randomToken(24)
+	g.playerTokens = append(g.playerTokens, token)
+	writeJSON(w, map[string]interface{}{
+		"token": token,
+		"state": sanitizeState(g.state, &idx),
+	})
 }
 
 func handleRoll(w http.ResponseWriter, r *http.Request, id string) {
@@ -696,8 +694,8 @@ func apiHandler(w http.ResponseWriter, r *http.Request) {
 		handleGetGame(w, r, id)
 	case action == "start" && r.Method == http.MethodPost:
 		handleStart(w, r, id)
-	case action == "claim" && r.Method == http.MethodPost:
-		handleClaim(w, r, id)
+	case action == "join" && r.Method == http.MethodPost:
+		handleJoin(w, r, id)
 	case action == "roll" && r.Method == http.MethodPost:
 		handleRoll(w, r, id)
 	case action == "blindType" && r.Method == http.MethodPost:
