@@ -71,12 +71,18 @@ const STRINGS = {
     noPlayersYet: 'Nobody has joined yet.',
     youBadge: 'You',
     startGame: 'Start Game',
+    startGameConfirmTitle: 'Start the game?',
+    startGameConfirmBody: (n) => `Players in the game: ${n}. Make sure everyone is on the list; latecomers can still join with €${STARTING_MONEY}.`,
+    startGameConfirmBtn: 'Start',
     waitingHostStart: 'Waiting for the host to start the game…',
     sameNetworkNote: "Players need to be on the same WiFi network as this server (or reach its address over the internet).",
     gameOverTitle: 'Game Over!',
     winnerLabel: (name) => `Winner: ${name}`,
     playAgain: 'Play Again',
     endGame: 'End Game',
+    endGameConfirmTitle: 'End the game for everyone?',
+    endGameConfirmBody: "Everyone will see the final standings, and this game can't be continued.",
+    endGameConfirmBtn: 'End game',
     turnBadge: 'Turn',
     yourTurn: 'Your turn!',
     turnOf: (name) => `${name}'s Turn`,
@@ -165,12 +171,18 @@ const STRINGS = {
     noPlayersYet: 'Пока никто не присоединился.',
     youBadge: 'Вы',
     startGame: 'Начать игру',
+    startGameConfirmTitle: 'Начать игру?',
+    startGameConfirmBody: (n) => `Игроков в игре: ${n}. Проверьте, что все в списке; опоздавшие смогут присоединиться позже с €${STARTING_MONEY}.`,
+    startGameConfirmBtn: 'Начать',
     waitingHostStart: 'Ожидание, пока хост начнёт игру…',
     sameNetworkNote: 'Игроки должны быть в той же Wi-Fi сети, что и сервер (или иметь доступ к его адресу через интернет).',
     gameOverTitle: 'Игра окончена!',
     winnerLabel: (name) => `Победитель: ${name}`,
     playAgain: 'Играть снова',
     endGame: 'Завершить игру',
+    endGameConfirmTitle: 'Завершить игру для всех?',
+    endGameConfirmBody: 'Все увидят итоговую таблицу, а продолжить эту игру будет нельзя.',
+    endGameConfirmBtn: 'Завершить',
     turnBadge: 'Ход',
     yourTurn: 'Ваш ход!',
     turnOf: (name) => `Ход игрока ${name}`,
@@ -298,6 +310,39 @@ const Avatar = ({ name }) => (
     {(name || '?').charAt(0).toUpperCase()}
   </span>
 );
+
+// Asks before an action that can't be undone. Sits at the bottom of the
+// screen on phones, where the thumb already is, and centred on desktop.
+const ConfirmDialog = ({ title, body, confirmLabel, cancelLabel, onConfirm, onCancel, tone = 'danger' }) => {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onCancel(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onCancel]);
+  // Rendered into <body> so no ancestor's stacking or sticky context can
+  // clip the backdrop.
+  return ReactDOM.createPortal(
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-zinc-900/40 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:items-center"
+      onClick={onCancel}
+    >
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
+        <p className="mt-2 text-sm text-zinc-600">{body}</p>
+        <div className="mt-6 grid grid-cols-2 gap-2">
+          <Button variant="secondary" autoFocus onClick={onCancel}>{cancelLabel}</Button>
+          <Button variant={tone} onClick={onConfirm}>{confirmLabel}</Button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+};
 
 const Spinner = () => (
   <div className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-200 border-t-indigo-600" />
@@ -673,6 +718,8 @@ const BetYouCantGame = () => {
   const [now, setNow] = useState(Date.now());
   const [joinError, setJoinError] = useState(null);
   const [copied, setCopied] = useState(false);
+  // Which irreversible action is waiting for a yes: 'start', 'end' or null.
+  const [confirming, setConfirming] = useState(null);
 
   const [lang, setLang] = useState(() => {
     try {
@@ -900,6 +947,16 @@ const BetYouCantGame = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Closing the tab mid-game would cost a player their seat (their identity
+  // lives only in this page's URL), so the browser asks before leaving.
+  const inProgress = !!gs && myPlayerId !== null && gs.phase !== 'lobby' && gs.phase !== 'gameOver';
+  useEffect(() => {
+    if (!inProgress) return;
+    const onBeforeUnload = (e) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [inProgress]);
+
   const startTheGame = () => post('/start', { adminToken });
   const rollDice = () => post('/roll');
   const selectBlindBetType = (type) => post('/blindType', { type });
@@ -1001,7 +1058,7 @@ const BetYouCantGame = () => {
             )}
             <div className="border-t border-zinc-100 p-5 sm:p-6">
               {isAdmin ? (
-                <Button block className="sm:w-auto sm:min-w-[220px]" onClick={startTheGame} disabled={gs.players.length === 0}>
+                <Button block className="sm:w-auto sm:min-w-[220px]" onClick={() => setConfirming('start')} disabled={gs.players.length === 0}>
                   {t(lang, 'startGame')}
                 </Button>
               ) : (
@@ -1010,6 +1067,17 @@ const BetYouCantGame = () => {
               {apiError && <p className="mt-3 text-sm text-rose-600">{apiError}</p>}
             </div>
           </Card>
+          {confirming === 'start' && isAdmin && (
+            <ConfirmDialog
+              tone="primary"
+              title={t(lang, 'startGameConfirmTitle')}
+              body={t(lang, 'startGameConfirmBody', gs.players.length)}
+              confirmLabel={t(lang, 'startGameConfirmBtn')}
+              cancelLabel={t(lang, 'cancel')}
+              onConfirm={() => { setConfirming(null); startTheGame(); }}
+              onCancel={() => setConfirming(null)}
+            />
+          )}
         </>}
         side={<>
           <Card className="p-5 sm:p-6">
@@ -1275,10 +1343,20 @@ const BetYouCantGame = () => {
         {renderJoinBar()}
         {apiError && <Notice tone="danger">{apiError}</Notice>}
         {phaseView}
+        {confirming === 'end' && iAmCurrent && (
+          <ConfirmDialog
+            title={t(lang, 'endGameConfirmTitle')}
+            body={t(lang, 'endGameConfirmBody')}
+            confirmLabel={t(lang, 'endGameConfirmBtn')}
+            cancelLabel={t(lang, 'cancel')}
+            onConfirm={() => { setConfirming(null); endGame(); }}
+            onCancel={() => setConfirming(null)}
+          />
+        )}
       </>}
       side={<Standings players={gs.players} currentId={gs.currentPlayerIndex} myId={myPlayerId} lang={lang} />}
     />,
-    iAmCurrent && <Button variant="ghost" size="sm" onClick={endGame}>{t(lang, 'endGame')}</Button>
+    iAmCurrent && <Button variant="ghost" size="sm" onClick={() => setConfirming('end')}>{t(lang, 'endGame')}</Button>
   );
 };
 
