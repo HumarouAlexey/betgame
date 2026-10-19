@@ -74,7 +74,7 @@ const STRINGS = {
     startGameConfirmTitle: 'Start the game?',
     startGameConfirmBody: (n) => `Players in the game: ${n}. Make sure everyone is on the list; latecomers can still join with €${STARTING_MONEY}.`,
     startGameConfirmBtn: 'Start',
-    waitingHostStart: 'Waiting for the host to start the game…',
+    joinToStart: 'Join the game to be able to start it.',
     sameNetworkNote: "Players need to be on the same WiFi network as this server (or reach its address over the internet).",
     gameOverTitle: 'Game Over!',
     winnerLabel: (name) => `Winner: ${name}`,
@@ -86,7 +86,7 @@ const STRINGS = {
     turnBadge: 'Turn',
     yourTurn: 'Your turn!',
     turnOf: (name) => `${name}'s Turn`,
-    taskHiddenUntilBets: "You'll see the task once everyone has bet.",
+    taskHiddenUntilBets: "You'll see the task once everyone has bet. Start the challenge as soon as you've read it.",
     rolled: (v) => `Rolled: ${v}`,
     rollDice: 'Roll Dice',
     waitingRoll: (name) => `Waiting on ${name} to roll…`,
@@ -174,7 +174,7 @@ const STRINGS = {
     startGameConfirmTitle: 'Начать игру?',
     startGameConfirmBody: (n) => `Игроков в игре: ${n}. Проверьте, что все в списке; опоздавшие смогут присоединиться позже с €${STARTING_MONEY}.`,
     startGameConfirmBtn: 'Начать',
-    waitingHostStart: 'Ожидание, пока хост начнёт игру…',
+    joinToStart: 'Присоединитесь, чтобы начать игру.',
     sameNetworkNote: 'Игроки должны быть в той же Wi-Fi сети, что и сервер (или иметь доступ к его адресу через интернет).',
     gameOverTitle: 'Игра окончена!',
     winnerLabel: (name) => `Победитель: ${name}`,
@@ -186,7 +186,7 @@ const STRINGS = {
     turnBadge: 'Ход',
     yourTurn: 'Ваш ход!',
     turnOf: (name) => `Ход игрока ${name}`,
-    taskHiddenUntilBets: 'Задание откроется, когда все сделают ставки.',
+    taskHiddenUntilBets: 'Задание откроется, когда все сделают ставки. После прочтения сразу начни испытание.',
     rolled: (v) => `Выпало: ${v}`,
     rollDice: 'Бросить кубик',
     waitingRoll: (name) => `Ожидание, пока ${name} бросит кубик…`,
@@ -699,7 +699,6 @@ const BetYouCantGame = () => {
   const params = new URLSearchParams(window.location.search);
   const urlGameId = params.get('g');
   const urlPlayerToken = params.get('p');
-  const urlAdminToken = params.get('a');
 
   const [gameId, setGameId] = useState(urlGameId || null);
   const [myToken, setMyToken] = useState(urlPlayerToken || null);
@@ -707,8 +706,6 @@ const BetYouCantGame = () => {
   // response (gs.you); we mirror it into state so the rest of the UI can
   // keep indexing gs.players[myPlayerId] as before.
   const [myPlayerId, setMyPlayerId] = useState(null);
-  const [adminToken, setAdminToken] = useState(urlAdminToken || null);
-  const isAdmin = !!adminToken;
   const [gs, setGs] = useState(null);
   // Opening the site without a game id creates one straight away, so there
   // is always something to load first.
@@ -772,8 +769,8 @@ const BetYouCantGame = () => {
     }
   };
 
-  // The one link everyone shares. It never carries the host's token or
-  // anyone's player token — each phone gets its own token by joining.
+  // The one link everyone shares. It never carries anyone's player
+  // token — each phone gets its own token by joining.
   const getShareUrl = () => {
     const url = new URL(window.location.origin + window.location.pathname);
     url.searchParams.set('g', gameId);
@@ -930,10 +927,8 @@ const BetYouCantGame = () => {
       }
       setGameId(data.gameId);
       setGs(data.state);
-      setAdminToken(data.adminToken);
       const url = new URL(window.location.href);
       url.searchParams.set('g', data.gameId);
-      url.searchParams.set('a', data.adminToken);
       window.history.replaceState(null, '', url.toString());
     } catch (e) {
       setApiError(t(lang, 'cantReachIsItRunning'));
@@ -957,7 +952,7 @@ const BetYouCantGame = () => {
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
   }, [inProgress]);
 
-  const startTheGame = () => post('/start', { adminToken });
+  const startTheGame = () => post('/start');
   const rollDice = () => post('/roll');
   const selectBlindBetType = (type) => post('/blindType', { type });
   const revealBlindTask = () => post('/reveal');
@@ -1057,17 +1052,17 @@ const BetYouCantGame = () => {
               </ul>
             )}
             <div className="border-t border-zinc-100 p-5 sm:p-6">
-              {isAdmin ? (
+              {isMe ? (
                 <Button block className="sm:w-auto sm:min-w-[220px]" onClick={() => setConfirming('start')} disabled={gs.players.length === 0}>
                   {t(lang, 'startGame')}
                 </Button>
               ) : (
-                <Notice>{t(lang, 'waitingHostStart')}</Notice>
+                <Notice>{t(lang, 'joinToStart')}</Notice>
               )}
               {apiError && <p className="mt-3 text-sm text-rose-600">{apiError}</p>}
             </div>
           </Card>
-          {confirming === 'start' && isAdmin && (
+          {confirming === 'start' && isMe && (
             <ConfirmDialog
               tone="primary"
               title={t(lang, 'startGameConfirmTitle')}

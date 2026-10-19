@@ -63,9 +63,8 @@ type GameState struct {
 }
 
 type Game struct {
-	mu         sync.Mutex
-	state      GameState
-	adminToken string
+	mu    sync.Mutex
+	state GameState
 	// playerTokens[i] is player i's secret identity token, required as
 	// ?playerId= on every request made "as" that player. Never sent to
 	// clients as part of GameState — only handed out once, to the phone
@@ -235,7 +234,6 @@ type errMsg struct{ en, ru string }
 
 var errMessages = map[string]errMsg{
 	"gameNotFound":       {"game not found", "игра не найдена"},
-	"onlyHostCanStart":   {"only the host can start the game", "начать игру может только хост"},
 	"onlyCurrentPlayer":  {"only the current player can do this", "это может сделать только текущий игрок"},
 	"invalidType":        {"invalid type", "недопустимый тип"},
 	"blindTypeNotChosen": {"blind bet task type not chosen", "тип задания для слепой ставки не выбран"},
@@ -283,7 +281,7 @@ func getGame(id string) (*Game, bool) {
 // ---- HTTP handlers ----
 
 // handleCreateGame opens an empty lobby. Players add themselves through
-// handleJoin — including the host, who only differs by holding adminToken.
+// handleJoin, and any of them can then start the game.
 func handleCreateGame(w http.ResponseWriter, r *http.Request) {
 	state := GameState{
 		Phase:            "lobby",
@@ -293,8 +291,6 @@ func handleCreateGame(w http.ResponseWriter, r *http.Request) {
 		UsedSkillTasks:   []int{},
 		UsedMentalTasks:  []int{},
 	}
-
-	adminToken := randomToken(24)
 
 	gamesMu.Lock()
 	var id string
@@ -306,15 +302,13 @@ func handleCreateGame(w http.ResponseWriter, r *http.Request) {
 	}
 	games[id] = &Game{
 		state:        state,
-		adminToken:   adminToken,
 		playerTokens: []string{},
 	}
 	gamesMu.Unlock()
 
 	writeJSON(w, map[string]interface{}{
-		"gameId":     id,
-		"adminToken": adminToken,
-		"state":      sanitizeState(state, nil),
+		"gameId": id,
+		"state":  sanitizeState(state, nil),
 	})
 }
 
@@ -329,22 +323,18 @@ func handleGetGame(w http.ResponseWriter, r *http.Request, id string) {
 	respondState(w, r, g)
 }
 
-type startReq struct {
-	AdminToken string `json:"adminToken"`
-}
-
+// handleStart lets any player who has joined start the game; onlookers who
+// haven't joined yet can't.
 func handleStart(w http.ResponseWriter, r *http.Request, id string) {
 	g, ok := getGame(id)
 	if !ok {
 		writeErrKey(w, r, 404, "gameNotFound")
 		return
 	}
-	var req startReq
-	json.NewDecoder(r.Body).Decode(&req)
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	if req.AdminToken == "" || req.AdminToken != g.adminToken {
-		writeErrKey(w, r, 403, "onlyHostCanStart")
+	if viewerFromRequest(g, r) == nil {
+		writeErrKey(w, r, 403, "mustJoinFirst")
 		return
 	}
 	if len(g.state.Players) == 0 {

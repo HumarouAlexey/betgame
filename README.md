@@ -21,12 +21,12 @@ It starts on port 8080 and prints the addresses to use:
     On this machine:      http://localhost:8080
     On your WiFi network: http://192.168.x.x:8080
 
-Open the WiFi address on your own phone/laptop as the host (make sure your
-phone and the players' phones are all on the same WiFi network as whichever
-machine runs this binary) and create a game. The lobby shows one QR code /
+Open the WiFi address on your own phone/laptop (make sure your phone and
+the players' phones are all on the same WiFi network as whichever machine
+runs this binary); a new game is created as the page opens. The lobby shows one QR code /
 link for the game; everyone opens it on their own phone, taps "Join the
-Game" and types their name. The lobby's player list updates live, and the
-host starts the game from the same screen. The same link keeps working
+Game" and types their name. The lobby's player list updates live, and any
+player who has joined can start the game from the same screen. The same link keeps working
 after the start: a late joiner takes the last seat in the turn order and
 starts with €100.
 
@@ -47,14 +47,12 @@ address instead. The code doesn't change — only where you run the binary.
   length of the `skillTasks` / `mentalTasks` arrays in web/index.html. If
   you add or remove challenges there, update the two constants here too.
 - Only the current player's phone can roll the dice, start/reveal a
-  challenge, end the game early, and advance to the next turn — the
-  buttons are disabled on everyone else's phone (and the server rejects
-  the request even if called directly). Judging success/fail is the one
-  action any player can do, so the group can agree on it together.
-- Starting the game itself is a separate role: whoever's phone created
-  the game is the host, and only that phone (identified by a secret
-  token kept in its URL) can start it. Don't share the host's own
-  address bar — the lobby's QR code / link doesn't carry that token.
+  challenge, record whether it succeeded, end the game early, and advance
+  to the next turn — the buttons are disabled or hidden on everyone
+  else's phone (and the server rejects the request even if called
+  directly).
+- Any player who has joined can start the game from the lobby; someone
+  who has only opened the link can't until they join.
 - Mental tasks stay hidden from the player performing them until every
   other player has bet, so they can't get a head start on the puzzle.
 - The dice only move players (and pay €50 for passing START). The kind of
