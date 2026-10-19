@@ -72,6 +72,16 @@ const STRINGS = {
     logoLetter: 'T',
     showStandings: 'Show standings',
     backToGame: 'Back to game',
+    managePlayers: 'Manage players',
+    doneManaging: 'Done',
+    adminPasswordTitle: 'Organizer password',
+    adminPasswordBody: 'Enter the password to remove players from the game.',
+    passwordLabel: 'Password',
+    unlockBtn: 'Unlock',
+    removeBtn: 'Remove',
+    removeConfirmTitle: (name) => `Remove player ${name}?`,
+    removeConfirmBody: "Their money and seat will be gone. They can rejoin with the link as a new player.",
+    youWereRemoved: 'You were removed from the game. You can join again as a new player.',
     noPlayersYet: 'Nobody has joined yet.',
     youBadge: 'You',
     startGame: 'Start Game',
@@ -177,6 +187,16 @@ const STRINGS = {
     logoLetter: 'Т',
     showStandings: 'Показать таблицу',
     backToGame: 'Вернуться к игре',
+    managePlayers: 'Управление игроками',
+    doneManaging: 'Готово',
+    adminPasswordTitle: 'Пароль организатора',
+    adminPasswordBody: 'Введите пароль, чтобы удалять игроков из игры.',
+    passwordLabel: 'Пароль',
+    unlockBtn: 'Открыть',
+    removeBtn: 'Удалить',
+    removeConfirmTitle: (name) => `Удалить игрока ${name}?`,
+    removeConfirmBody: 'Деньги и место игрока пропадут. По ссылке можно будет войти заново как новый игрок.',
+    youWereRemoved: 'Вас удалили из игры. Можно присоединиться заново как новый игрок.',
     noPlayersYet: 'Пока никто не присоединился.',
     youBadge: 'Вы',
     startGame: 'Начать игру',
@@ -355,6 +375,61 @@ const ConfirmDialog = ({ title, body, confirmLabel, cancelLabel, onConfirm, onCa
   );
 };
 
+// Asks for the organizer's password. onSubmit resolves to an error message,
+// or to nothing when the password was accepted.
+const PasswordDialog = ({ lang, onSubmit, onCancel }) => {
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onCancel(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onCancel]);
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!password || busy) return;
+    setBusy(true);
+    const err = await onSubmit(password);
+    setBusy(false);
+    if (err) setError(err);
+  };
+  return ReactDOM.createPortal(
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-zinc-900/40 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:items-center"
+      onClick={onCancel}
+    >
+      <form
+        role="dialog"
+        aria-modal="true"
+        onSubmit={submit}
+        className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="text-lg font-semibold tracking-tight">{t(lang, 'adminPasswordTitle')}</h2>
+        <p className="mt-2 text-sm text-zinc-600">{t(lang, 'adminPasswordBody')}</p>
+        <label className="mt-4 block">
+          <span className="mb-1.5 block text-sm font-medium text-zinc-700">{t(lang, 'passwordLabel')}</span>
+          <input
+            type="password"
+            autoFocus
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => { setPassword(e.target.value); setError(null); }}
+            className={cx(inputClass, 'h-12')}
+          />
+        </label>
+        {error && <p className="mt-2 text-sm text-rose-600">{error}</p>}
+        <div className="mt-6 grid grid-cols-2 gap-2">
+          <Button variant="secondary" onClick={onCancel}>{t(lang, 'cancel')}</Button>
+          <Button type="submit" disabled={!password || busy}>{t(lang, 'unlockBtn')}</Button>
+        </div>
+      </form>
+    </div>,
+    document.body
+  );
+};
+
 const Spinner = () => (
   <div className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-200 border-t-indigo-600" />
 );
@@ -447,7 +522,8 @@ const TwoColumn = ({ main, side }) => (
   </div>
 );
 
-const Standings = ({ players, currentId, myId, lang }) => (
+// With onRemove, each row gets a remove button (organizer mode).
+const Standings = ({ players, currentId, myId, lang, onRemove }) => (
   <Card>
     <div className="flex items-center justify-between border-b border-zinc-100 px-4 py-3">
       <h2 className="text-sm font-semibold">{t(lang, 'standingsTitle')}</h2>
@@ -461,6 +537,11 @@ const Standings = ({ players, currentId, myId, lang }) => (
           {p.id === myId && <Badge>{t(lang, 'youBadge')}</Badge>}
           {p.id === currentId && <Badge tone="accent">{t(lang, 'turnBadge')}</Badge>}
           <span className="text-sm font-semibold tabular-nums">€{p.money}</span>
+          {onRemove && (
+            <Button variant="ghost" size="sm" className="-mr-2 text-rose-600 hover:bg-rose-50 hover:text-rose-700" onClick={() => onRemove(p)}>
+              {t(lang, 'removeBtn')}
+            </Button>
+          )}
         </li>
       ))}
     </ol>
@@ -762,6 +843,11 @@ const BetYouCantGame = () => {
   // underneath (just hidden), so a half-typed bet survives the round trip,
   // and the scroll position is put back on the way out.
   const [showingStandings, setShowingStandings] = useState(false);
+  // Organizer mode: the verified password (kept in memory only, so a reload
+  // asks again), whether its dialog is open, and the player awaiting removal.
+  const [adminPassword, setAdminPassword] = useState(null);
+  const [askingPassword, setAskingPassword] = useState(false);
+  const [pendingRemoval, setPendingRemoval] = useState(null);
   const savedScrollRef = React.useRef(0);
   const toggleStandings = () => {
     if (!showingStandings) savedScrollRef.current = window.scrollY;
@@ -881,9 +967,7 @@ const BetYouCantGame = () => {
   // secret token) into local state so the rest of the UI can keep indexing
   // gs.players[myPlayerId] as before.
   useEffect(() => {
-    if (gs && gs.you !== null && gs.you !== undefined) {
-      setMyPlayerId(gs.you);
-    }
+    if (gs) setMyPlayerId(gs.you === undefined ? null : gs.you);
   }, [gs]);
 
   // Ticks several times a second so a countdown flips close to the real
@@ -1062,10 +1146,48 @@ const BetYouCantGame = () => {
     );
   };
 
+  const adminPost = async (path, body) => {
+    try {
+      const res = await fetch(`${apiBase()}/${gameId}${path}${viewerQuery()}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      return res.ok ? { data } : { error: data.error || t(lang, 'somethingWrong'), status: res.status };
+    } catch (e) {
+      return { error: t(lang, 'connectionError') };
+    }
+  };
+
+  // Resolves to an error message for the dialog, or nothing on success.
+  const unlockAdmin = async (password) => {
+    const result = await adminPost('/adminCheck', { password });
+    if (result.error) return result.error;
+    setAdminPassword(password);
+    setAskingPassword(false);
+  };
+
+  const removePlayer = async (player) => {
+    setPendingRemoval(null);
+    const result = await adminPost('/kick', { password: adminPassword, playerId: player.id, name: player.name });
+    if (result.error) {
+      if (result.status === 403) setAdminPassword(null);
+      setApiError(result.error);
+      return;
+    }
+    applyState(result.data);
+    setApiError(null);
+  };
+
+  // We joined once (we hold a token) but the server no longer knows us.
+  const wasRemoved = !!myToken && !!gs && myPlayerId === null;
+
   const renderJoinBar = () => {
     if (myPlayerId !== null || !gs || !gs.players) return null;
     return (
       <Card className="p-5 sm:p-6">
+        {wasRemoved && <Notice tone="warning" className="mb-4">{t(lang, 'youWereRemoved')}</Notice>}
         <p className="mb-4 text-sm font-medium text-zinc-700">{t(lang, 'joinLateHint', STARTING_MONEY)}</p>
         <JoinForm onJoin={joinGame} error={joinError} lang={lang} />
       </Card>
@@ -1109,7 +1231,10 @@ const BetYouCantGame = () => {
             <div className="mt-6 max-w-md">
               {isMe
                 ? <Notice tone="success">{t(lang, 'youAreIn', gs.players[myPlayerId].name)}</Notice>
-                : <JoinForm onJoin={joinGame} error={joinError} lang={lang} />}
+                : <>
+                    {wasRemoved && <Notice tone="warning" className="mb-4">{t(lang, 'youWereRemoved')}</Notice>}
+                    <JoinForm onJoin={joinGame} error={joinError} lang={lang} />
+                  </>}
             </div>
           </Card>
 
@@ -1412,8 +1537,33 @@ const BetYouCantGame = () => {
         <div className="mx-auto w-full max-w-5xl">
           <TwoColumn
             main={<>
-              <Standings players={gs.players} currentId={gs.currentPlayerIndex} myId={myPlayerId} lang={lang} />
+              {apiError && <Notice tone="danger">{apiError}</Notice>}
+              <Standings
+                players={gs.players}
+                currentId={gs.currentPlayerIndex}
+                myId={myPlayerId}
+                lang={lang}
+                onRemove={adminPassword ? setPendingRemoval : undefined}
+              />
               <Button variant="secondary" block onClick={toggleStandings}>{t(lang, 'backToGame')}</Button>
+              <div className="text-center">
+                {adminPassword
+                  ? <Button variant="ghost" size="sm" onClick={() => setAdminPassword(null)}>{t(lang, 'doneManaging')}</Button>
+                  : <Button variant="ghost" size="sm" onClick={() => setAskingPassword(true)}>{t(lang, 'managePlayers')}</Button>}
+              </div>
+              {askingPassword && (
+                <PasswordDialog lang={lang} onSubmit={unlockAdmin} onCancel={() => setAskingPassword(false)} />
+              )}
+              {pendingRemoval && (
+                <ConfirmDialog
+                  title={t(lang, 'removeConfirmTitle', pendingRemoval.name)}
+                  body={t(lang, 'removeConfirmBody')}
+                  confirmLabel={t(lang, 'removeBtn')}
+                  cancelLabel={t(lang, 'cancel')}
+                  onConfirm={() => removePlayer(pendingRemoval)}
+                  onCancel={() => setPendingRemoval(null)}
+                />
+              )}
             </>}
             side={renderInviteCard()}
           />

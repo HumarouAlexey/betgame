@@ -30,6 +30,20 @@ player who has joined can start the game from the same screen. The same link kee
 after the start: a late joiner takes the last seat in the turn order and
 starts with €100.
 
+## Removing players
+
+The organizer password is `BgaGoSeeWin` (`defaultAdminPassword` in
+main.go). To use a different one without editing the code, start the
+server with:
+
+    BETGAME_ADMIN_PASSWORD='another password' ./betgame
+
+In a game, tap the logo to open the standings, then "Manage players" and
+enter that password: each player gets a Remove button. A removed player
+loses their seat and money and can rejoin with the link as a new player;
+if it was their turn, the turn passes on. The password is kept only in
+that browser tab's memory, so a reload asks for it again.
+
 ## Playing over the internet instead of local WiFi
 
 If players aren't on the same network, deploy the same binary to any small

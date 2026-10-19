@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/rand"
+	"crypto/subtle"
 	"embed"
 	"encoding/base64"
 	"encoding/json"
@@ -12,6 +13,7 @@ import (
 	mrand "math/rand"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -116,6 +118,31 @@ func (g *Game) drawTaskType() string {
 	g.typeBag = g.typeBag[1:]
 	g.lastType = t
 	return t
+}
+
+// defaultAdminPassword unlocks removing players unless the
+// BETGAME_ADMIN_PASSWORD environment variable sets a different one.
+const defaultAdminPassword = "BgaGoSeeWin"
+
+// adminPassword is the organizer password in effect, set at startup.
+var adminPassword string
+
+func checkAdminPassword(pw string) bool {
+	return adminPassword != "" && subtle.ConstantTimeCompare([]byte(pw), []byte(adminPassword)) == 1
+}
+
+// requireAdmin writes a 403 and returns false unless pw is the organizer's
+// password.
+func requireAdmin(w http.ResponseWriter, r *http.Request, pw string) bool {
+	if adminPassword == "" {
+		writeErrKey(w, r, 403, "adminDisabled")
+		return false
+	}
+	if !checkAdminPassword(pw) {
+		writeErrKey(w, r, 403, "wrongPassword")
+		return false
+	}
+	return true
 }
 
 var (
@@ -262,6 +289,9 @@ var errMessages = map[string]errMsg{
 	"gameAlreadyOver":    {"this game is already over", "эта игра уже закончилась"},
 	"noPlayers":          {"someone has to join before the game can start", "чтобы начать игру, кто-то должен присоединиться"},
 	"mustJoinFirst":      {"you must join the game as a player first", "сначала нужно присоединиться к игре"},
+	"adminDisabled":      {"removing players is turned off on this server", "удаление игроков отключено на этом сервере"},
+	"wrongPassword":      {"wrong password", "неверный пароль"},
+	"playerChanged":      {"the player list has changed, try again", "список игроков изменился, попробуйте ещё раз"},
 }
 
 // writeErrKey writes an error message in the language requested via ?lang=ru
@@ -663,7 +693,13 @@ func handleNextTurn(w http.ResponseWriter, r *http.Request, id string) {
 		return
 	}
 
-	g.state.CurrentPlayerIdx = (g.state.CurrentPlayerIdx + 1) % len(g.state.Players)
+	g.startTurn((g.state.CurrentPlayerIdx + 1) % len(g.state.Players))
+	respondState(w, r, g)
+}
+
+// startTurn hands the turn to player idx with a clean slate.
+func (g *Game) startTurn(idx int) {
+	g.state.CurrentPlayerIdx = idx
 	g.state.DiceValue = nil
 	g.state.CurrentTaskType = nil
 	g.state.CurrentTaskIndex = nil
@@ -674,6 +710,102 @@ func handleNextTurn(w http.ResponseWriter, r *http.Request, id string) {
 	g.state.Phase = "playing"
 	g.state.BlindBetTaskType = nil
 	g.state.PerformEndsAt = nil
+}
+
+// removePlayer takes player k out of the game. Players are addressed by
+// their index everywhere (IDs, tokens, bets, the current turn), so every
+// index above k shifts down by one. If k was mid-turn, the turn passes to
+// whoever now sits in that seat.
+func (g *Game) removePlayer(k int) {
+	s := &g.state
+	s.Players = append(s.Players[:k], s.Players[k+1:]...)
+	for i := range s.Players {
+		s.Players[i].ID = i
+	}
+	g.playerTokens = append(g.playerTokens[:k], g.playerTokens[k+1:]...)
+
+	shift := func(i int) int {
+		if i > k {
+			return i - 1
+		}
+		return i
+	}
+	bets := map[int]Bet{}
+	for pid, b := range s.Bets {
+		if pid != k {
+			bets[shift(pid)] = b
+		}
+	}
+	s.Bets = bets
+	if s.Rescued != nil {
+		rescued := []int{}
+		for _, pid := range s.Rescued {
+			if pid != k {
+				rescued = append(rescued, shift(pid))
+			}
+		}
+		s.Rescued = rescued
+	}
+
+	switch {
+	case len(s.Players) == 0:
+		s.CurrentPlayerIdx = 0
+		if s.Phase != "lobby" {
+			s.Phase = "gameOver"
+		}
+	case s.Phase == "lobby" || s.Phase == "gameOver":
+		s.CurrentPlayerIdx = shift(s.CurrentPlayerIdx) % len(s.Players)
+	case k == s.CurrentPlayerIdx:
+		g.startTurn(k % len(s.Players))
+	case k < s.CurrentPlayerIdx:
+		s.CurrentPlayerIdx--
+	}
+}
+
+type adminReq struct {
+	Password string `json:"password"`
+	// PlayerID and Name pick the player to remove. The name guards against
+	// the list having shifted since the organizer looked at it.
+	PlayerID int    `json:"playerId"`
+	Name     string `json:"name"`
+}
+
+// handleAdminCheck lets the client verify the organizer's password before
+// showing the remove buttons.
+func handleAdminCheck(w http.ResponseWriter, r *http.Request, id string) {
+	if _, ok := getGame(id); !ok {
+		writeErrKey(w, r, 404, "gameNotFound")
+		return
+	}
+	var req adminReq
+	json.NewDecoder(r.Body).Decode(&req)
+	if !requireAdmin(w, r, req.Password) {
+		return
+	}
+	writeJSON(w, map[string]bool{"ok": true})
+}
+
+func handleKick(w http.ResponseWriter, r *http.Request, id string) {
+	g, ok := getGame(id)
+	if !ok {
+		writeErrKey(w, r, 404, "gameNotFound")
+		return
+	}
+	var req adminReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeErrKey(w, r, 400, "badRequest")
+		return
+	}
+	if !requireAdmin(w, r, req.Password) {
+		return
+	}
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if req.PlayerID < 0 || req.PlayerID >= len(g.state.Players) || g.state.Players[req.PlayerID].Name != req.Name {
+		writeErrKey(w, r, 409, "playerChanged")
+		return
+	}
+	g.removePlayer(req.PlayerID)
 	respondState(w, r, g)
 }
 
@@ -739,6 +871,10 @@ func apiHandler(w http.ResponseWriter, r *http.Request) {
 		handleNextTurn(w, r, id)
 	case action == "end" && r.Method == http.MethodPost:
 		handleEnd(w, r, id)
+	case action == "adminCheck" && r.Method == http.MethodPost:
+		handleAdminCheck(w, r, id)
+	case action == "kick" && r.Method == http.MethodPost:
+		handleKick(w, r, id)
 	default:
 		writeErrKey(w, r, 404, "unknownRoute")
 	}
@@ -764,6 +900,10 @@ func localIPs() []string {
 
 func main() {
 	port := "8080"
+	adminPassword = os.Getenv("BETGAME_ADMIN_PASSWORD")
+	if adminPassword == "" {
+		adminPassword = defaultAdminPassword
+	}
 	staticFS, err := fs.Sub(webFS, "web")
 	if err != nil {
 		log.Fatal("не найдены встроенные файлы web/: ", err)
@@ -785,6 +925,11 @@ func main() {
 	log.Printf("На этом устройстве:  http://localhost:%s", port)
 	for _, ip := range localIPs() {
 		log.Printf("В сети Wi-Fi:        http://%s:%s", ip, port)
+	}
+	if os.Getenv("BETGAME_ADMIN_PASSWORD") == "" {
+		log.Printf("Удаление игроков: пароль по умолчанию из main.go")
+	} else {
+		log.Printf("Удаление игроков: пароль из BETGAME_ADMIN_PASSWORD")
 	}
 	log.Fatal(http.ListenAndServe(addr, mux))
 }
