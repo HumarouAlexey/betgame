@@ -57,6 +57,10 @@ address instead. The code doesn't change — only where you run the binary.
   address bar — the lobby's QR code / link doesn't carry that token.
 - Mental tasks stay hidden from the player performing them until every
   other player has bet, so they can't get a head start on the puzzle.
+- The dice only move players (and pay €50 for passing START). The kind of
+  challenge — skill, mental or blind bet — is dealt from a shuffled bag of
+  six (two of each), so no kind comes up more than twice in a row and a
+  blind bet is never more than eight challenges away.
 - Bets are private: each phone only ever sees the bet it placed itself.
   Other players show up as "thinking…" / "bet placed" until the
   challenge is judged, at which point everyone's bet and payout are

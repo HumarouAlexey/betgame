@@ -71,6 +71,39 @@ type Game struct {
 	// clients as part of GameState — only handed out once, to the phone
 	// that joined as that player (see handleJoin).
 	playerTokens []string
+	// typeBag holds the challenge types still to be dealt from the current
+	// shuffled bag (see drawTaskType); lastType is the one dealt most recently.
+	typeBag  []string
+	lastType string
+}
+
+// taskTypeBag is one round of challenge types. Dealing from a shuffled bag
+// instead of rolling for each turn keeps the three types evenly mixed: no
+// type comes up more than twice in a row, and a blind bet is never more
+// than eight challenges away.
+var taskTypeBag = []string{"skill", "skill", "mental", "mental", "blind", "blind"}
+
+// drawTaskType deals the next challenge type, refilling and reshuffling the
+// bag when it runs out. A fresh bag never opens with the type the previous
+// one ended on, so a streak can't straddle two bags.
+func (g *Game) drawTaskType() string {
+	if len(g.typeBag) == 0 {
+		bag := append([]string(nil), taskTypeBag...)
+		mrand.Shuffle(len(bag), func(i, j int) { bag[i], bag[j] = bag[j], bag[i] })
+		if bag[0] == g.lastType {
+			for i := 1; i < len(bag); i++ {
+				if bag[i] != g.lastType {
+					bag[0], bag[i] = bag[i], bag[0]
+					break
+				}
+			}
+		}
+		g.typeBag = bag
+	}
+	t := g.typeBag[0]
+	g.typeBag = g.typeBag[1:]
+	g.lastType = t
+	return t
 }
 
 var (
@@ -399,33 +432,34 @@ func handleRoll(w http.ResponseWriter, r *http.Request, id string) {
 	}
 	cp.Position = newPos
 
-	spaceType := newPos % 10
 	g.state.Bets = map[int]Bet{}
 
-	switch {
-	case spaceType == 0:
+	if newPos%10 == 0 {
 		// landed on START — bonus already applied, roll again
 		g.state.DiceValue = nil
 		g.state.Phase = "playing"
-	case spaceType >= 1 && spaceType <= 3:
+		respondState(w, r, g)
+		return
+	}
+
+	// The roll moves the player (and pays out for passing START); which
+	// kind of challenge they get comes from the shuffled bag, not the square.
+	g.state.DiceValue = &roll
+	switch t := g.drawTaskType(); t {
+	case "skill":
 		idx, used := pickUnused(skillTaskCount, g.state.UsedSkillTasks)
 		g.state.UsedSkillTasks = used
-		t := "skill"
 		g.state.CurrentTaskType = &t
 		g.state.CurrentTaskIndex = &idx
 		g.state.Phase = "betting"
-		g.state.DiceValue = &roll
-	case spaceType >= 4 && spaceType <= 6:
+	case "mental":
 		idx, used := pickUnused(mentalTaskCount, g.state.UsedMentalTasks)
 		g.state.UsedMentalTasks = used
-		t := "mental"
 		g.state.CurrentTaskType = &t
 		g.state.CurrentTaskIndex = &idx
 		g.state.Phase = "betting"
-		g.state.DiceValue = &roll
-	default: // 7,8,9
+	default:
 		g.state.Phase = "blindBet"
-		g.state.DiceValue = &roll
 	}
 
 	respondState(w, r, g)
