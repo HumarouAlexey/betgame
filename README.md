@@ -58,6 +58,6 @@ address instead. The code doesn't change — only where you run the binary.
 - Mental tasks stay hidden from the player performing them until every
   other player has bet, so they can't get a head start on the puzzle.
 - Bets are private: each phone only ever sees the bet it placed itself.
-  Other players show up as "thinking…" / "✓ bet placed" until the
+  Other players show up as "thinking…" / "bet placed" until the
   challenge is judged, at which point everyone's bet and payout are
   revealed together.

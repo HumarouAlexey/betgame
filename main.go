@@ -56,8 +56,6 @@ type GameState struct {
 	ShowResults      bool        `json:"showResults"`
 	UsedSkillTasks   []int       `json:"usedSkillTasks"`
 	UsedMentalTasks  []int       `json:"usedMentalTasks"`
-	GameTimeMinutes  int         `json:"gameTimeMinutes"`
-	GameEndsAt       *int64      `json:"gameEndsAt"`
 	PerformEndsAt    *int64      `json:"performEndsAt"`
 	BetsCount        int         `json:"betsCount"`
 	BetPlacedBy      []int       `json:"betPlacedBy"`
@@ -204,7 +202,6 @@ type errMsg struct{ en, ru string }
 
 var errMessages = map[string]errMsg{
 	"gameNotFound":       {"game not found", "игра не найдена"},
-	"badBody":            {"bad request body", "некорректное тело запроса"},
 	"onlyHostCanStart":   {"only the host can start the game", "начать игру может только хост"},
 	"onlyCurrentPlayer":  {"only the current player can do this", "это может сделать только текущий игрок"},
 	"invalidType":        {"invalid type", "недопустимый тип"},
@@ -252,22 +249,9 @@ func getGame(id string) (*Game, bool) {
 
 // ---- HTTP handlers ----
 
-type createGameReq struct {
-	GameTimeMinutes int `json:"gameTimeMinutes"`
-}
-
 // handleCreateGame opens an empty lobby. Players add themselves through
 // handleJoin — including the host, who only differs by holding adminToken.
 func handleCreateGame(w http.ResponseWriter, r *http.Request) {
-	var req createGameReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeErrKey(w, r, 400, "badBody")
-		return
-	}
-	if req.GameTimeMinutes <= 0 {
-		req.GameTimeMinutes = 30
-	}
-
 	state := GameState{
 		Phase:            "lobby",
 		Players:          []Player{},
@@ -275,7 +259,6 @@ func handleCreateGame(w http.ResponseWriter, r *http.Request) {
 		Bets:             map[int]Bet{},
 		UsedSkillTasks:   []int{},
 		UsedMentalTasks:  []int{},
-		GameTimeMinutes:  req.GameTimeMinutes,
 	}
 
 	adminToken := randomToken(24)
@@ -337,8 +320,6 @@ func handleStart(w http.ResponseWriter, r *http.Request, id string) {
 	}
 	if g.state.Phase == "lobby" {
 		g.state.Phase = "playing"
-		ends := nowMs() + int64(g.state.GameTimeMinutes)*60000
-		g.state.GameEndsAt = &ends
 	}
 	respondState(w, r, g)
 }

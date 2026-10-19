@@ -2,14 +2,24 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#ffffff" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <title>Спорим, не сможешь!</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] } } } };
+</script>
 <style>
-  body { margin: 0; }
+  body { margin: 0; background: #fafafa; -webkit-tap-highlight-color: transparent; }
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number] { -moz-appearance: textfield; }
 </style>
 </head>
 <body>
@@ -24,13 +34,11 @@ const STARTING_MONEY = 100;
 const STRINGS = {
   en: {
     title: "Bet You Can't!",
-    betFormPrompt: (name, money) => `${name}, place your bet (€${money} available):`,
-    amountPlaceholder: 'Amount',
+    yourBet: 'Your bet',
+    available: (money) => `€${money} available`,
     yes: 'YES',
     no: 'NO',
-    minBetLabel: 'Min bet:',
-    maxBetLabel: 'Max bet:',
-    tapAmountHint: 'tap an amount to use it, or type your own in the field',
+    betRange: (min, max) => `From €${min} to €${max}: never more than half your money.`,
     notEnoughForMinBet: (min) => `Not enough money to place the €${min} minimum bet.`,
     connectionError: "Can't reach the game server. Check it's still running and you're on the same network.",
     somethingWrong: 'Something went wrong',
@@ -40,93 +48,91 @@ const STRINGS = {
     cantReachTitle: "Can't reach the game",
     retry: 'Retry',
     loadingGame: 'Loading game…',
-    gameDurationLabel: 'Game Duration (minutes)',
-    howToPlayTitle: 'How to Play:',
+    howToPlayTitle: 'How to Play',
     howToPlay1: 'Roll dice and move around the board',
     howToPlay2: 'Complete skill or mental challenges',
     howToPlay3: 'Bet on whether others will succeed',
     howToPlay4: 'Collect the most money to win!',
-    createGame: 'Create Game',
     lobbyIntro: 'Everyone opens this link or scans the QR code on their own phone and joins under their name.',
-    youAreIn: (name) => `You're in as ${name} ✅`,
+    youAreIn: (name) => `You're in as ${name}`,
     joinGame: 'Join the Game',
     joinLateHint: (money) => `The game is on — join now and start with €${money}.`,
     yourName: 'Your name',
     joinBtn: 'Join',
     cancel: 'Cancel',
     qrAlt: 'QR code for the game link',
-    copied: 'Copied ✓',
+    copied: 'Copied',
     copyLink: 'Copy Link',
-    playersJoined: (n) => `Players (${n}):`,
+    lobbyTitle: 'Lobby',
+    playersJoined: 'Players',
+    inviteTitle: 'Invite players',
+    inviteHint: 'Scan the code or send the link.',
+    standingsTitle: 'Standings',
     noPlayersYet: 'Nobody has joined yet.',
-    youMark: '(you)',
-    startGame: 'Start Game ▶',
+    youBadge: 'You',
+    startGame: 'Start Game',
     waitingHostStart: 'Waiting for the host to start the game…',
     sameNetworkNote: "Players need to be on the same WiFi network as this server (or reach its address over the internet).",
     gameOverTitle: 'Game Over!',
     winnerLabel: (name) => `Winner: ${name}`,
     playAgain: 'Play Again',
     endGame: 'End Game',
-    endGameTooltip: (name) => `Only ${name} (current player) can end the game`,
-    current: '(current)',
+    turnBadge: 'Turn',
     yourTurn: 'Your turn!',
     turnOf: (name) => `${name}'s Turn`,
     taskHiddenUntilBets: "You'll see the task once everyone has bet.",
     rolled: (v) => `Rolled: ${v}`,
     rollDice: 'Roll Dice',
     waitingRoll: (name) => `Waiting on ${name} to roll…`,
-    blindBetTitle: "🎲 Blind Bet!",
-    chooseChallengeType: 'Choose your challenge type:',
-    chooseChallengeTypeOther: (name) => `${name}, choose your challenge type:`,
+    blindBetTitle: "Blind Bet!",
+    chooseChallengeType: 'Choose your challenge type',
+    chooseChallengeTypeOther: (name) => `${name}, choose your challenge type`,
     blindBetWarning: 'Other players will bet BEFORE seeing what the challenge is!',
-    skillTaskBtn: '🏃 Skill Task',
-    mentalTaskBtn: '🧠 Mental Task',
-    skillChallenge: '🏃 Skill Challenge',
-    mentalChallenge: '🧠 Mental Challenge',
+    skillTaskBtn: 'Skill Task',
+    mentalTaskBtn: 'Mental Task',
+    skillChallenge: 'Skill Challenge',
+    mentalChallenge: 'Mental Challenge',
     timeLimit: (t) => `Time limit: ${t} seconds`,
     noTimeLimit: 'No time limit — the tries decide',
-    blindBettingTitle: '🎲 Blind Betting!',
+    blindBettingTitle: 'Blind Betting!',
     hasChosen: 'has chosen a',
-    skillChallengeLower: 'skill challenge 🏃',
-    mentalChallengeLower: 'mental challenge 🧠',
-    blindBettingWarning: '⚠️ Place your bets WITHOUT knowing the task!',
+    skillChallengeLower: 'skill challenge',
+    mentalChallengeLower: 'mental challenge',
+    blindBettingWarning: 'Place your bets WITHOUT knowing the task!',
     waitingOnBets: (count, needed) => `Waiting on bets: ${count}/${needed}`,
     youBet: (amount, outcome) => `You bet €${amount} on ${outcome} — waiting for the others.`,
-    success: 'SUCCESS ✓',
-    fail: 'FAIL ✗',
-    betsPlacedCount: (count, needed) => `Bets Placed (${count}/${needed}):`,
+    success: 'SUCCESS',
+    fail: 'FAIL',
+    betsPlacedCount: (count, needed) => `Bets Placed (${count}/${needed})`,
     betsSecretNote: 'Bets stay secret until the challenge is judged.',
-    betPlaced: '✓ bet placed',
+    betPlaced: 'bet placed',
     thinking: 'thinking…',
     allBetsStartChallenge: 'All Bets Placed - Start Challenge!',
     allBetsRevealChallenge: 'All Bets Placed - Reveal Challenge!',
     waitingContinue: (name) => `Waiting for ${name} to continue…`,
-    challengeRevealed: '🎉 Challenge Revealed!',
-    betsPlacedTitle: 'Bets Placed:',
-    startChallengeBtn: 'Start Challenge! 🎯',
+    challengeRevealed: 'Challenge Revealed!',
+    betsPlacedTitle: 'Bets Placed',
+    startChallengeBtn: 'Start Challenge!',
     youPerforming: "You're performing!",
     otherPerforming: (name) => `${name} is performing!`,
     secondsLeft: (s) => `${s}s left`,
     didYouSucceed: 'Did you succeed?',
     onlyYouJudge: 'Only you can record the result.',
     waitingResult: (name) => `Waiting for ${name} to record the result…`,
-    successBtn: '✓ SUCCESS',
-    failedBtn: '✗ FAILED',
-    resultsTitle: 'Results:',
-    taskCompleted: '✓ Completed!',
-    taskFailed: '✗ Failed',
-    taskLabel: (outcome) => `Task: ${outcome}`,
-    continueBtn: 'Continue ▶',
+    successBtn: 'SUCCESS',
+    failedBtn: 'FAILED',
+    resultsTitle: 'Results',
+    taskCompleted: 'Completed!',
+    taskFailed: 'Failed',
+    continueBtn: 'Continue',
   },
   ru: {
     title: 'Спорим, не сможешь!',
-    betFormPrompt: (name, money) => `${name}, сделай ставку (доступно €${money}):`,
-    amountPlaceholder: 'Сумма',
+    yourBet: 'Ваша ставка',
+    available: (money) => `Доступно €${money}`,
     yes: 'ДА',
     no: 'НЕТ',
-    minBetLabel: 'Мин. ставка:',
-    maxBetLabel: 'Макс. ставка:',
-    tapAmountHint: 'нажми на сумму, чтобы подставить её, или введи свою в поле',
+    betRange: (min, max) => `От €${min} до €${max}: не больше половины ваших денег.`,
     notEnoughForMinBet: (min) => `Недостаточно денег для минимальной ставки €${min}.`,
     connectionError: 'Не удаётся подключиться к серверу игры. Убедитесь, что он запущен и вы в одной сети.',
     somethingWrong: 'Что-то пошло не так',
@@ -136,83 +142,83 @@ const STRINGS = {
     cantReachTitle: 'Не удаётся подключиться к игре',
     retry: 'Повторить',
     loadingGame: 'Загрузка игры…',
-    gameDurationLabel: 'Длительность игры (минут)',
-    howToPlayTitle: 'Как играть:',
+    howToPlayTitle: 'Как играть',
     howToPlay1: 'Бросай кубик и двигайся по полю',
     howToPlay2: 'Выполняй задания на ловкость или смекалку',
     howToPlay3: 'Делай ставки на успех других игроков',
     howToPlay4: 'Собери больше всех денег и победи!',
-    createGame: 'Создать игру',
     lobbyIntro: 'Каждый открывает эту ссылку или сканирует QR-код на своём телефоне и присоединяется под своим именем.',
-    youAreIn: (name) => `Вы вошли как ${name} ✅`,
+    youAreIn: (name) => `Вы вошли как ${name}`,
     joinGame: 'Присоединиться к игре',
     joinLateHint: (money) => `Игра уже идёт — присоединяйтесь, у вас будет €${money}.`,
     yourName: 'Ваше имя',
     joinBtn: 'Войти',
     cancel: 'Отмена',
     qrAlt: 'QR-код со ссылкой на игру',
-    copied: 'Скопировано ✓',
+    copied: 'Скопировано',
     copyLink: 'Скопировать ссылку',
-    playersJoined: (n) => `Игроки (${n}):`,
+    lobbyTitle: 'Лобби',
+    playersJoined: 'Игроки',
+    inviteTitle: 'Пригласите игроков',
+    inviteHint: 'Отсканируйте код или отправьте ссылку.',
+    standingsTitle: 'Таблица',
     noPlayersYet: 'Пока никто не присоединился.',
-    youMark: '(вы)',
-    startGame: 'Начать игру ▶',
+    youBadge: 'Вы',
+    startGame: 'Начать игру',
     waitingHostStart: 'Ожидание, пока хост начнёт игру…',
     sameNetworkNote: 'Игроки должны быть в той же Wi-Fi сети, что и сервер (или иметь доступ к его адресу через интернет).',
     gameOverTitle: 'Игра окончена!',
     winnerLabel: (name) => `Победитель: ${name}`,
     playAgain: 'Играть снова',
     endGame: 'Завершить игру',
-    endGameTooltip: (name) => `Завершить игру может только ${name} (текущий игрок)`,
-    current: '(ходит)',
+    turnBadge: 'Ход',
     yourTurn: 'Ваш ход!',
     turnOf: (name) => `Ход игрока ${name}`,
     taskHiddenUntilBets: 'Задание откроется, когда все сделают ставки.',
     rolled: (v) => `Выпало: ${v}`,
     rollDice: 'Бросить кубик',
     waitingRoll: (name) => `Ожидание, пока ${name} бросит кубик…`,
-    blindBetTitle: '🎲 Слепая ставка!',
-    chooseChallengeType: 'Выберите тип задания:',
-    chooseChallengeTypeOther: (name) => `${name}, выберите тип задания:`,
+    blindBetTitle: 'Слепая ставка!',
+    chooseChallengeType: 'Выберите тип задания',
+    chooseChallengeTypeOther: (name) => `${name}, выберите тип задания`,
     blindBetWarning: 'Остальные игроки сделают ставки ДО того, как узнают задание!',
-    skillTaskBtn: '🏃 На ловкость',
-    mentalTaskBtn: '🧠 На смекалку',
-    skillChallenge: '🏃 Испытание на ловкость',
-    mentalChallenge: '🧠 Испытание на смекалку',
+    skillTaskBtn: 'На ловкость',
+    mentalTaskBtn: 'На смекалку',
+    skillChallenge: 'Испытание на ловкость',
+    mentalChallenge: 'Испытание на смекалку',
     timeLimit: (t) => `Лимит времени: ${t} секунд`,
     noTimeLimit: 'Без ограничения по времени — решают попытки',
-    blindBettingTitle: '🎲 Слепые ставки!',
+    blindBettingTitle: 'Слепые ставки!',
     hasChosen: 'выбрал',
-    skillChallengeLower: 'испытание на ловкость 🏃',
-    mentalChallengeLower: 'испытание на смекалку 🧠',
-    blindBettingWarning: '⚠️ Сделайте ставки, НЕ зная задания!',
+    skillChallengeLower: 'испытание на ловкость',
+    mentalChallengeLower: 'испытание на смекалку',
+    blindBettingWarning: 'Сделайте ставки, НЕ зная задания!',
     waitingOnBets: (count, needed) => `Ожидаем ставки: ${count}/${needed}`,
     youBet: (amount, outcome) => `Вы поставили €${amount} на ${outcome} — ждём остальных.`,
-    success: 'УСПЕХ ✓',
-    fail: 'ПРОВАЛ ✗',
-    betsPlacedCount: (count, needed) => `Ставки сделаны (${count}/${needed}):`,
+    success: 'УСПЕХ',
+    fail: 'ПРОВАЛ',
+    betsPlacedCount: (count, needed) => `Ставки сделаны (${count}/${needed})`,
     betsSecretNote: 'Ставки останутся в секрете до объявления результата.',
-    betPlaced: '✓ ставка сделана',
+    betPlaced: 'ставка сделана',
     thinking: 'думает…',
     allBetsStartChallenge: 'Все поставили — начать испытание!',
     allBetsRevealChallenge: 'Все поставили — раскрыть задание!',
     waitingContinue: (name) => `Ожидание, пока ${name} продолжит…`,
-    challengeRevealed: '🎉 Задание раскрыто!',
-    betsPlacedTitle: 'Ставки сделаны:',
-    startChallengeBtn: 'Начать испытание! 🎯',
+    challengeRevealed: 'Задание раскрыто!',
+    betsPlacedTitle: 'Ставки сделаны',
+    startChallengeBtn: 'Начать испытание!',
     youPerforming: 'Ты выполняешь испытание!',
     otherPerforming: (name) => `${name} выполняет испытание!`,
     secondsLeft: (s) => `осталось ${s} с`,
     didYouSucceed: 'Справился?',
     onlyYouJudge: 'Только ты отмечаешь результат.',
     waitingResult: (name) => `Ожидание, пока ${name} отметит результат…`,
-    successBtn: '✓ УСПЕХ',
-    failedBtn: '✗ ПРОВАЛ',
-    resultsTitle: 'Результаты:',
-    taskCompleted: '✓ Выполнено!',
-    taskFailed: '✗ Провалено',
-    taskLabel: (outcome) => `Задание: ${outcome}`,
-    continueBtn: 'Продолжить ▶',
+    successBtn: 'УСПЕХ',
+    failedBtn: 'ПРОВАЛ',
+    resultsTitle: 'Результаты',
+    taskCompleted: 'Выполнено!',
+    taskFailed: 'Провалено',
+    continueBtn: 'Продолжить',
   },
 };
 
@@ -221,22 +227,186 @@ const t = (lang, key, ...args) => {
   return typeof entry === 'function' ? entry(...args) : entry;
 };
 
-const LanguageSwitcher = ({ lang, setLang }) => (
-  <div className="fixed top-2 right-2 z-50 flex bg-white/90 backdrop-blur rounded-full shadow-lg p-1 gap-1 text-xs font-bold">
-    <button
-      onClick={() => setLang('en')}
-      className={`px-2.5 py-1 rounded-full transition ${lang === 'en' ? 'bg-purple-600 text-white' : 'text-gray-500 hover:bg-gray-100'}`}
-    >
-      EN
-    </button>
-    <button
-      onClick={() => setLang('ru')}
-      className={`px-2.5 py-1 rounded-full transition ${lang === 'ru' ? 'bg-purple-600 text-white' : 'text-gray-500 hover:bg-gray-100'}`}
-    >
-      RU
-    </button>
+const cx = (...classes) => classes.filter(Boolean).join(' ');
+
+const byMoneyThenName = (a, b) => b.money - a.money || a.name.localeCompare(b.name);
+
+// ---- UI primitives ----
+// One small set of building blocks keeps every screen on the same spacing,
+// type scale and colours.
+
+const BUTTON_VARIANTS = {
+  primary: 'bg-indigo-600 text-white hover:bg-indigo-700 disabled:bg-zinc-200 disabled:text-zinc-400',
+  secondary: 'bg-white text-zinc-900 border border-zinc-300 hover:bg-zinc-50 disabled:text-zinc-400 disabled:hover:bg-white',
+  success: 'bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-zinc-200 disabled:text-zinc-400',
+  danger: 'bg-rose-600 text-white hover:bg-rose-700 disabled:bg-zinc-200 disabled:text-zinc-400',
+  ghost: 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 disabled:text-zinc-300 disabled:hover:bg-transparent',
+};
+const BUTTON_SIZES = {
+  sm: 'min-h-[2.25rem] px-3 py-1.5 text-sm',
+  md: 'min-h-[2.75rem] px-4 py-2 text-sm',
+  lg: 'min-h-[3rem] px-5 py-2.5 text-base',
+};
+
+const Button = ({ variant = 'primary', size = 'lg', block, className, ...props }) => (
+  <button
+    type="button"
+    {...props}
+    className={cx(
+      'inline-flex shrink-0 items-center justify-center gap-2 rounded-xl text-center font-semibold leading-tight transition-colors',
+      'focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed',
+      BUTTON_VARIANTS[variant], BUTTON_SIZES[size], block && 'w-full', className
+    )}
+  />
+);
+
+const Card = ({ className, children }) => (
+  <section className={cx('rounded-2xl border border-zinc-200 bg-white shadow-sm', className)}>{children}</section>
+);
+
+const Eyebrow = ({ className, children }) => (
+  <p className={cx('text-xs font-semibold uppercase tracking-wider text-zinc-500', className)}>{children}</p>
+);
+
+const BADGE_TONES = {
+  neutral: 'bg-zinc-100 text-zinc-700',
+  accent: 'bg-indigo-50 text-indigo-700',
+  success: 'bg-emerald-50 text-emerald-700',
+  danger: 'bg-rose-50 text-rose-700',
+};
+const Badge = ({ tone = 'neutral', children }) => (
+  <span className={cx('inline-flex shrink-0 items-center rounded-md px-2 py-0.5 text-xs font-medium', BADGE_TONES[tone])}>
+    {children}
+  </span>
+);
+
+const NOTICE_TONES = {
+  neutral: 'border-zinc-200 bg-zinc-50 text-zinc-700',
+  accent: 'border-indigo-200 bg-indigo-50 text-indigo-800',
+  success: 'border-emerald-200 bg-emerald-50 text-emerald-800',
+  warning: 'border-amber-200 bg-amber-50 text-amber-800',
+  danger: 'border-rose-200 bg-rose-50 text-rose-800',
+};
+const Notice = ({ tone = 'neutral', className, children }) => (
+  <div className={cx('rounded-xl border px-4 py-3 text-sm font-medium', NOTICE_TONES[tone], className)}>{children}</div>
+);
+
+const Hint = ({ children }) => <p className="mt-3 text-center text-sm text-zinc-500">{children}</p>;
+
+const Avatar = ({ name }) => (
+  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-zinc-100 text-sm font-semibold text-zinc-700">
+    {(name || '?').charAt(0).toUpperCase()}
+  </span>
+);
+
+const Spinner = () => (
+  <div className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-200 border-t-indigo-600" />
+);
+
+// A phase of the game: small label, heading, then whatever the phase needs.
+const Panel = ({ eyebrow, title, children }) => (
+  <Card className="p-5 sm:p-8">
+    {(eyebrow || title) && (
+      <div className="mb-6">
+        {eyebrow && <Eyebrow className="mb-1">{eyebrow}</Eyebrow>}
+        {title && <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">{title}</h2>}
+      </div>
+    )}
+    {children}
+  </Card>
+);
+
+const TaskCard = ({ text, meta, muted }) => (
+  <div className={cx('rounded-xl border p-5 sm:p-6', muted ? 'border-dashed border-zinc-300 bg-white' : 'border-zinc-200 bg-zinc-50')}>
+    <p className={cx('text-lg leading-relaxed sm:text-xl', muted ? 'text-zinc-500' : 'font-medium text-zinc-900')}>{text}</p>
+    {meta && <p className="mt-3 text-sm text-zinc-500">{meta}</p>}
   </div>
 );
+
+const LanguageSwitcher = ({ lang, setLang }) => (
+  <div className="flex rounded-lg border border-zinc-200 bg-zinc-50 p-0.5 text-xs font-semibold">
+    {['en', 'ru'].map(code => (
+      <button
+        key={code}
+        type="button"
+        onClick={() => setLang(code)}
+        className={cx(
+          'rounded-md px-2.5 py-1 transition-colors',
+          lang === code ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-900'
+        )}
+      >
+        {code.toUpperCase()}
+      </button>
+    ))}
+  </div>
+);
+
+// Full-height page with a sticky header; every screen renders inside it.
+const AppShell = ({ lang, setLang, actions, children }) => (
+  <div className="flex min-h-[100dvh] flex-col bg-zinc-50 pb-[env(safe-area-inset-bottom)] font-sans text-zinc-900 antialiased">
+    <header className="sticky top-0 z-40 border-b border-zinc-200 bg-white/90 pt-[env(safe-area-inset-top)] backdrop-blur">
+      <div className="flex h-14 items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-indigo-600 text-sm font-bold text-white">
+            {t(lang, 'title').charAt(0)}
+          </span>
+          <span className="truncate font-semibold">{t(lang, 'title')}</span>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          {actions}
+          <LanguageSwitcher lang={lang} setLang={setLang} />
+        </div>
+      </div>
+    </header>
+    <main className="w-full flex-1 px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">{children}</main>
+  </div>
+);
+
+// Main column plus a side column that drops below it on narrow screens.
+const TwoColumn = ({ main, side }) => (
+  <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+    <div className="min-w-0 space-y-4 lg:space-y-6">{main}</div>
+    <aside className="min-w-0 space-y-4 lg:sticky lg:top-20 lg:space-y-6">{side}</aside>
+  </div>
+);
+
+const Standings = ({ players, currentId, myId, lang }) => (
+  <Card>
+    <div className="flex items-center justify-between border-b border-zinc-100 px-4 py-3">
+      <h2 className="text-sm font-semibold">{t(lang, 'standingsTitle')}</h2>
+      <span className="text-xs text-zinc-500">{players.length}</span>
+    </div>
+    <ol className="divide-y divide-zinc-100">
+      {[...players].sort(byMoneyThenName).map((p, i) => (
+        <li key={p.id} className={cx('flex items-center gap-3 px-4 py-2.5', p.id === currentId && 'bg-indigo-50/60')}>
+          <span className="w-5 text-sm tabular-nums text-zinc-400">{i + 1}</span>
+          <span className="min-w-0 flex-1 truncate text-sm font-medium">{p.name}</span>
+          {p.id === myId && <Badge>{t(lang, 'youBadge')}</Badge>}
+          {p.id === currentId && <Badge tone="accent">{t(lang, 'turnBadge')}</Badge>}
+          <span className="text-sm font-semibold tabular-nums">€{p.money}</span>
+        </li>
+      ))}
+    </ol>
+  </Card>
+);
+
+const BetStatusList = ({ players, placedBy, pendingLabel, lang }) => {
+  if (players.length === 0) return null;
+  return (
+    <ul className="divide-y divide-zinc-100 rounded-xl border border-zinc-200">
+      {players.map(p => (
+        <li key={p.id} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
+          <span className="truncate font-medium">{p.name}</span>
+          {placedBy.includes(p.id)
+            ? <Badge tone="success">{t(lang, 'betPlaced')}</Badge>
+            : <span className="text-zinc-400">{pendingLabel}</span>}
+        </li>
+      ))}
+    </ul>
+  );
+};
+
+const inputClass = 'block w-full rounded-xl border border-zinc-300 bg-white px-4 text-base placeholder:text-zinc-400 focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-500/15';
 
 // One button that opens into a name field, so joining is a single obvious
 // action whether it happens in the lobby or in the middle of a game.
@@ -253,43 +423,28 @@ const JoinForm = ({ onJoin, error, lang }) => {
   };
 
   if (!open) {
-    return (
-      <button
-        onClick={() => setOpen(true)}
-        className="w-full bg-yellow-400 py-3 rounded-lg font-bold text-lg hover:bg-yellow-500 transition"
-      >
-        {t(lang, 'joinGame')}
-      </button>
-    );
+    return <Button block onClick={() => setOpen(true)}>{t(lang, 'joinGame')}</Button>;
   }
   return (
-    <form onSubmit={submit} className="space-y-2">
-      <input
-        type="text"
-        autoFocus
-        maxLength={24}
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        placeholder={t(lang, 'yourName')}
-        className="w-full px-4 py-3 border-2 border-purple-300 rounded-lg focus:border-purple-500 outline-none text-lg"
-      />
+    <form onSubmit={submit} className="space-y-3">
+      <label className="block">
+        <span className="mb-1.5 block text-sm font-medium text-zinc-700">{t(lang, 'yourName')}</span>
+        <input
+          type="text"
+          autoFocus
+          autoComplete="nickname"
+          enterKeyHint="go"
+          maxLength={24}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className={cx(inputClass, 'h-12')}
+        />
+      </label>
       <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={() => setOpen(false)}
-          className="px-4 py-3 bg-gray-100 text-gray-700 rounded-lg font-semibold hover:bg-gray-200"
-        >
-          {t(lang, 'cancel')}
-        </button>
-        <button
-          type="submit"
-          disabled={!name.trim() || busy}
-          className="flex-1 bg-purple-600 text-white py-3 rounded-lg font-bold text-lg hover:bg-purple-700 disabled:bg-gray-400"
-        >
-          {t(lang, 'joinBtn')}
-        </button>
+        <Button variant="secondary" onClick={() => setOpen(false)}>{t(lang, 'cancel')}</Button>
+        <Button type="submit" className="flex-1" disabled={!name.trim() || busy}>{t(lang, 'joinBtn')}</Button>
       </div>
-      {error && <p className="text-red-600 text-sm text-center">{error}</p>}
+      {error && <p className="text-sm text-rose-600">{error}</p>}
     </form>
   );
 };
@@ -301,59 +456,51 @@ const BetForm = ({ player, onBet, error, lang }) => {
   const parsed = parseInt(amount) || 0;
   const canBet = maxBet >= MIN_BET;
   const validAmount = canBet && parsed >= MIN_BET && parsed <= maxBet;
+  if (!canBet) {
+    return <Notice tone="danger">{t(lang, 'notEnoughForMinBet', MIN_BET)}</Notice>;
+  }
+  const half = Math.max(MIN_BET, Math.round(maxBet / 2 / MIN_BET) * MIN_BET);
+  const presets = [...new Set([MIN_BET, half, maxBet])];
   return (
-    <div className="bg-gray-50 p-4 rounded-lg mb-6">
-      <p className="font-semibold mb-3">{t(lang, 'betFormPrompt', player.name, player.money)}</p>
-      {canBet ? (
-        <>
-          <div className="flex gap-2">
-            <input
-              type="number"
-              placeholder={t(lang, 'amountPlaceholder')}
-              min={MIN_BET}
-              max={maxBet}
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              className="flex-1 px-3 py-2 border rounded"
-            />
-            <button
-              onClick={() => onBet(true, parsed)}
-              disabled={!validAmount}
-              className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed"
-            >
-              {t(lang, 'yes')}
-            </button>
-            <button
-              onClick={() => onBet(false, parsed)}
-              disabled={!validAmount}
-              className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed"
-            >
-              {t(lang, 'no')}
-            </button>
-          </div>
-          <p className="text-base font-semibold text-gray-700 mt-2">
-            {t(lang, 'minBetLabel')}{' '}
-            <button
-              onClick={() => setAmount(String(MIN_BET))}
-              className="text-blue-600 underline decoration-dotted underline-offset-2 font-bold"
-            >
-              €{MIN_BET}
-            </button>
-            {' · '}
-            {t(lang, 'maxBetLabel')}{' '}
-            <button
-              onClick={() => setAmount(String(maxBet))}
-              className="text-blue-600 underline decoration-dotted underline-offset-2 font-bold"
-            >
-              €{maxBet}
-            </button>
-            <span className="block text-sm font-normal text-gray-500">{t(lang, 'tapAmountHint')}</span>
-          </p>
-        </>
-      ) : (
-        <p className="text-sm text-red-600">{t(lang, 'notEnoughForMinBet', MIN_BET)}</p>
-      )}
-      {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
+    <div className="space-y-3">
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="text-sm font-medium text-zinc-700">{t(lang, 'yourBet')}</p>
+        <p className="text-sm text-zinc-500">{t(lang, 'available', player.money)}</p>
+      </div>
+      <div className="relative">
+        <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-lg text-zinc-400">€</span>
+        <input
+          type="number"
+          inputMode="numeric"
+          min={MIN_BET}
+          max={maxBet}
+          value={amount}
+          placeholder={`${MIN_BET}–${maxBet}`}
+          onChange={(e) => setAmount(e.target.value)}
+          className={cx(inputClass, 'h-14 pl-9 text-2xl font-semibold tabular-nums')}
+        />
+      </div>
+      <div className="flex gap-2">
+        {presets.map(v => (
+          <button
+            key={v}
+            type="button"
+            onClick={() => setAmount(String(v))}
+            className={cx(
+              'h-10 flex-1 rounded-lg border text-sm font-semibold tabular-nums transition-colors',
+              parsed === v ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300'
+            )}
+          >
+            €{v}
+          </button>
+        ))}
+      </div>
+      <div className="grid grid-cols-2 gap-2 pt-1">
+        <Button variant="success" disabled={!validAmount} onClick={() => onBet(true, parsed)}>{t(lang, 'yes')}</Button>
+        <Button variant="danger" disabled={!validAmount} onClick={() => onBet(false, parsed)}>{t(lang, 'no')}</Button>
+      </div>
+      <p className="text-xs text-zinc-500">{t(lang, 'betRange', MIN_BET, maxBet)}</p>
+      {error && <p className="text-sm text-rose-600">{error}</p>}
     </div>
   );
 };
@@ -499,16 +646,6 @@ const BetYouCantGame = () => {
     { en: "Can the player name 8 different pieces of furniture in 30 seconds? No hints, no repeats.", ru: "Сможет ли игрок за 30 секунд назвать 8 разных предметов мебели? Без подсказок, без повторов.", time: 30 }
   ];
 
-  const diceFaces = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
-
-  const byMoneyThenName = (a, b) => b.money - a.money || a.name.localeCompare(b.name);
-
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
   // ---- Connection / game identity ----
   // `p` in the URL is a player's long, unguessable secret token (issued by
   // the server when this phone joined the game) — never the
@@ -528,11 +665,12 @@ const BetYouCantGame = () => {
   const [adminToken, setAdminToken] = useState(urlAdminToken || null);
   const isAdmin = !!adminToken;
   const [gs, setGs] = useState(null);
-  const [loading, setLoading] = useState(!!urlGameId);
+  // Opening the site without a game id creates one straight away, so there
+  // is always something to load first.
+  const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState(null);
   const [betError, setBetError] = useState(null);
   const [now, setNow] = useState(Date.now());
-  const [gameTime, setGameTime] = useState(30);
   const [joinError, setJoinError] = useState(null);
   const [copied, setCopied] = useState(false);
 
@@ -596,7 +734,7 @@ const BetYouCantGame = () => {
   };
 
   const getQrImageUrl = (url) =>
-    `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(url)}`;
+    `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(url)}`;
 
   const copyLink = async () => {
     const url = getShareUrl();
@@ -701,17 +839,6 @@ const BetYouCantGame = () => {
     } catch (e) {}
   };
 
-  const endGameTriggeredRef = React.useRef(false);
-  useEffect(() => {
-    if (!gs || gs.phase === 'gameOver' || gs.phase === 'lobby' || !gs.gameEndsAt) return;
-    if (now >= gs.gameEndsAt && !endGameTriggeredRef.current) {
-      endGameTriggeredRef.current = true;
-      playTimeUpSound();
-      endGame();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [now, gs]);
-
   const performAlertedRef = React.useRef(null);
   useEffect(() => {
     if (!gs || gs.phase !== 'performing' || !gs.performEndsAt) return;
@@ -747,7 +874,7 @@ const BetYouCantGame = () => {
       const res = await fetch(`${apiBase()}/${viewerQuery()}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gameTimeMinutes: gameTime })
+        body: '{}'
       });
       const data = await res.json();
       if (!res.ok) {
@@ -763,8 +890,15 @@ const BetYouCantGame = () => {
       window.history.replaceState(null, '', url.toString());
     } catch (e) {
       setApiError(t(lang, 'cantReachIsItRunning'));
+    } finally {
+      setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!urlGameId) createGame();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const startTheGame = () => post('/start', { adminToken });
   const rollDice = () => post('/roll');
@@ -798,498 +932,353 @@ const BetYouCantGame = () => {
   const renderJoinBar = () => {
     if (myPlayerId !== null || !gs || !gs.players) return null;
     return (
-      <div className="bg-yellow-50 border-2 border-yellow-400 rounded-lg p-3 mt-4">
-        <p className="font-semibold mb-2 text-sm text-center">{t(lang, 'joinLateHint', STARTING_MONEY)}</p>
+      <Card className="p-5 sm:p-6">
+        <p className="mb-4 text-sm font-medium text-zinc-700">{t(lang, 'joinLateHint', STARTING_MONEY)}</p>
         <JoinForm onJoin={joinGame} error={joinError} lang={lang} />
-      </div>
+      </Card>
     );
   };
 
-  let content;
+  const shell = (children, actions) => (
+    <AppShell lang={lang} setLang={setLang} actions={actions}>{children}</AppShell>
+  );
 
   if (apiError && !gs) {
-    content = (
-      <div className="min-h-screen bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center p-4">
-        <div className="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full text-center">
-          <h1 className="text-2xl font-bold mb-3 text-purple-600">{t(lang, 'cantReachTitle')}</h1>
-          <p className="text-gray-600 mb-6">{apiError}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="w-full bg-purple-600 text-white py-3 rounded-lg font-bold text-lg hover:bg-purple-700 transition"
-          >
-            {t(lang, 'retry')}
-          </button>
-        </div>
-      </div>
-    );
-  } else if (loading && !gs) {
-    content = (
-      <div className="min-h-screen bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center p-4">
-        <p className="text-white text-lg font-semibold">{t(lang, 'loadingGame')}</p>
-      </div>
-    );
-  } else if (!gs) {
-    content = (
-      <div className="min-h-screen bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center p-4">
-        <div className="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full">
-          <h1 className="text-4xl font-bold text-center mb-6 text-purple-600">{t(lang, 'title')}</h1>
-
-          <div className="space-y-6">
-            <div>
-              <label className="block text-gray-700 font-semibold mb-2">{t(lang, 'gameDurationLabel')}</label>
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setGameTime(m => Math.max(10, m - 5))}
-                  disabled={gameTime <= 10}
-                  className="w-12 h-12 shrink-0 flex items-center justify-center text-2xl font-bold bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 active:bg-purple-300 disabled:opacity-40 disabled:hover:bg-purple-100"
-                >
-                  −
-                </button>
-                <span className="flex-1 text-center text-2xl font-bold text-gray-800">{gameTime}</span>
-                <button
-                  type="button"
-                  onClick={() => setGameTime(m => Math.min(90, m + 5))}
-                  disabled={gameTime >= 90}
-                  className="w-12 h-12 shrink-0 flex items-center justify-center text-2xl font-bold bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 active:bg-purple-300 disabled:opacity-40 disabled:hover:bg-purple-100"
-                >
-                  +
-                </button>
-              </div>
-            </div>
-
-            <button
-              onClick={createGame}
-              className="w-full bg-purple-600 text-white py-3 rounded-lg font-bold text-lg hover:bg-purple-700 transition"
-            >
-              {t(lang, 'createGame')}
-            </button>
-
-            <div className="p-4 bg-purple-50 rounded-lg text-sm text-gray-700">
-              <p className="font-semibold mb-2">{t(lang, 'howToPlayTitle')}</p>
-              <ul className="list-disc list-inside space-y-1">
-                <li>{t(lang, 'howToPlay1')}</li>
-                <li>{t(lang, 'howToPlay2')}</li>
-                <li>{t(lang, 'howToPlay3')}</li>
-                <li>{t(lang, 'howToPlay4')}</li>
-              </ul>
-            </div>
-          </div>
-          {apiError && <p className="text-red-600 text-sm text-center mt-3">{apiError}</p>}
-        </div>
-      </div>
-    );
-  } else if (gs.phase === 'lobby') {
-    const isMe = myPlayerId !== null && gs.players[myPlayerId];
-    content = (
-      <div className="min-h-screen bg-gradient-to-br from-purple-600 to-blue-600 p-4">
-        <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-2xl p-6 sm:p-8">
-          <h1 className="text-3xl font-bold text-center mb-2 text-purple-600">{t(lang, 'title')}</h1>
-          <p className="text-center text-gray-600 mb-6">
-            {t(lang, 'lobbyIntro')}
-          </p>
-
-          <div className="mb-6 text-center">
-            <img
-              src={getQrImageUrl(getShareUrl())}
-              alt={t(lang, 'qrAlt')}
-              className="mx-auto mb-2 rounded"
-              width={160}
-              height={160}
-            />
-            <button
-              onClick={copyLink}
-              className="w-full mb-2 px-3 py-1.5 bg-purple-100 text-purple-700 text-sm font-semibold rounded-lg hover:bg-purple-200"
-            >
-              {copied ? t(lang, 'copied') : t(lang, 'copyLink')}
-            </button>
-            <p className="text-xs text-gray-500 break-all">{getShareUrl()}</p>
-          </div>
-
-          <div className="mb-6">
-            {isMe ? (
-              <div className="bg-green-50 border-2 border-green-400 rounded-lg p-4 text-center">
-                <p className="font-bold text-green-700">{t(lang, 'youAreIn', gs.players[myPlayerId].name)}</p>
-              </div>
-            ) : (
-              <JoinForm onJoin={joinGame} error={joinError} lang={lang} />
-            )}
-          </div>
-
-          <div className="bg-gray-50 rounded-lg p-4 mb-6">
-            <h3 className="font-bold mb-2">{t(lang, 'playersJoined', gs.players.length)}</h3>
-            {gs.players.length === 0 ? (
-              <p className="text-sm text-gray-500">{t(lang, 'noPlayersYet')}</p>
-            ) : (
-              <ul className="space-y-1">
-                {gs.players.map(p => (
-                  <li key={p.id} className="flex items-center gap-2">
-                    <span className="text-sm">👤</span>
-                    <span className="font-semibold">{p.name}</span>
-                    {p.id === myPlayerId && <span className="text-xs text-purple-600">{t(lang, 'youMark')}</span>}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          {isAdmin ? (
-            <button
-              onClick={startTheGame}
-              disabled={gs.players.length === 0}
-              className="w-full bg-purple-600 text-white py-3 rounded-lg font-bold text-lg hover:bg-purple-700 disabled:bg-gray-400 transition"
-            >
-              {t(lang, 'startGame')}
-            </button>
-          ) : (
-            <div className="w-full bg-gray-100 text-gray-600 py-3 rounded-lg font-semibold text-center">
-              {t(lang, 'waitingHostStart')}
-            </div>
-          )}
-          {apiError && <p className="text-red-600 text-sm text-center mt-3">{apiError}</p>}
-          <p className="text-xs text-gray-400 text-center mt-4">
-            {t(lang, 'sameNetworkNote')}
-          </p>
-        </div>
-      </div>
-    );
-  } else if (gs.phase === 'gameOver') {
-    const rankedPlayers = [...gs.players].sort(byMoneyThenName);
-    const winner = rankedPlayers[0];
-    content = (
-      <div className="min-h-screen bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center p-4">
-        <div className="bg-white rounded-xl shadow-2xl p-8 max-w-2xl w-full">
-          <div className="text-center mb-8">
-            <div className="text-6xl mb-4">🏆</div>
-            <h1 className="text-4xl font-bold text-gray-800 mb-2">{t(lang, 'gameOverTitle')}</h1>
-            <h2 className="text-2xl text-purple-600">{t(lang, 'winnerLabel', winner.name)}</h2>
-          </div>
-
-          <div className="space-y-3">
-            {rankedPlayers
-              .map((player, index) => (
-                <div key={player.id} className="flex items-center justify-between bg-gray-50 p-4 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl font-bold text-gray-400">#{index + 1}</span>
-                    <span className="font-semibold">{player.name}</span>
-                  </div>
-                  <span className="text-xl font-bold text-green-600">€{player.money}</span>
-                </div>
-              ))}
-          </div>
-
-          <button
-            onClick={() => window.location.href = window.location.origin + window.location.pathname}
-            className="w-full mt-8 bg-purple-600 text-white py-3 rounded-lg font-bold hover:bg-purple-700 transition"
-          >
-            {t(lang, 'playAgain')}
-          </button>
-        </div>
-      </div>
-    );
-  } else {
-    const currentTask = currentTaskObject(gs);
-    const currentPlayer = gs.players[gs.currentPlayerIndex];
-    const timeLeft = gs.gameEndsAt ? Math.max(0, Math.round((gs.gameEndsAt - now) / 1000)) : 0;
-    const taskTimeText = (task) => (task.time ? t(lang, 'timeLimit', task.time) : t(lang, 'noTimeLimit'));
-    const challengeTimeLeft = gs.performEndsAt
-      ? Math.max(0, Math.ceil((gs.performEndsAt - now) / 1000))
-      : (currentTask ? currentTask.time : null);
-    const iAmCurrent = myPlayerId === gs.currentPlayerIndex;
-    const otherPlayers = gs.players.filter((_, i) => i !== gs.currentPlayerIndex);
-    const betsCount = gs.betsCount || 0;
-    const betPlacedBy = gs.betPlacedBy || [];
-    const betsNeeded = gs.players.length - 1;
-    const myBet = myPlayerId !== null ? (gs.bets || {})[myPlayerId] : undefined;
-
-    content = (
-      <div className="min-h-screen bg-gradient-to-br from-blue-500 to-purple-600 p-4">
-        <div className="max-w-3xl mx-auto">
-          <div className="bg-white rounded-xl shadow-2xl p-4 sm:p-6 mb-4">
-            <div className="flex flex-wrap justify-between items-center gap-3">
-              <h1 className="text-2xl sm:text-3xl font-bold text-purple-600">{t(lang, 'title')}</h1>
-              <div className="flex items-center gap-3 flex-wrap">
-                <div className="flex items-center gap-2">
-                  <span>⏱️</span>
-                  <span className="font-bold text-lg">{formatTime(timeLeft)}</span>
-                </div>
-                <button
-                  onClick={endGame}
-                  disabled={!iAmCurrent}
-                  title={iAmCurrent ? undefined : t(lang, 'endGameTooltip', currentPlayer.name)}
-                  className="px-3 py-1.5 bg-red-500 text-white text-sm rounded-lg hover:bg-red-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
-                >
-                  {t(lang, 'endGame')}
-                </button>
-              </div>
-            </div>
-            {renderJoinBar()}
-            {apiError && <p className="text-red-600 text-sm text-center mt-2">{apiError}</p>}
-          </div>
-
-          <div className="bg-white rounded-xl shadow-2xl p-3 mb-4 space-y-1">
-            {[...gs.players].sort(byMoneyThenName).map(player => (
-              <div
-                key={player.id}
-                className={`flex items-center justify-between px-3 py-2 rounded-lg ${player.id === gs.currentPlayerIndex ? 'bg-yellow-50 ring-2 ring-yellow-400' : 'bg-gray-50'} ${myPlayerId === player.id ? 'border-2 border-purple-500' : ''}`}
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-sm">👤</span>
-                  <span className="font-semibold text-sm truncate">{player.name}</span>
-                  {player.id === gs.currentPlayerIndex && (
-                    <span className="text-xs text-yellow-600 font-semibold shrink-0">{t(lang, 'current')}</span>
-                  )}
-                </div>
-                <span className="font-bold text-green-600 shrink-0">€{player.money}</span>
-              </div>
-            ))}
-          </div>
-
-          {gs.phase === 'playing' && (
-            <div className="bg-white rounded-xl shadow-xl p-8 text-center">
-              <h2 className="text-2xl font-bold mb-4">
-                {iAmCurrent ? t(lang, 'yourTurn') : t(lang, 'turnOf', currentPlayer.name)}
-              </h2>
-
-              {gs.diceValue && (
-                <div className="mb-6">
-                  <div className="text-7xl mb-2">{diceFaces[gs.diceValue - 1]}</div>
-                  <p className="text-xl">{t(lang, 'rolled', gs.diceValue)}</p>
-                </div>
-              )}
-
-              <button
-                onClick={rollDice}
-                disabled={gs.diceValue !== null || !iAmCurrent}
-                className="px-8 py-4 bg-purple-600 text-white text-xl font-bold rounded-lg hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition"
-              >
-                {t(lang, 'rollDice')}
-              </button>
-              {!iAmCurrent && (
-                <p className="text-sm text-gray-500 mt-4">{t(lang, 'waitingRoll', currentPlayer.name)}</p>
-              )}
-            </div>
-          )}
-
-          {gs.phase === 'blindBet' && (
-            <div className="bg-white rounded-xl shadow-xl p-8">
-              <h2 className="text-2xl font-bold mb-4 text-center">{t(lang, 'blindBetTitle')}</h2>
-              <p className="text-center mb-4 text-lg">
-                {iAmCurrent ? t(lang, 'chooseChallengeType') : t(lang, 'chooseChallengeTypeOther', currentPlayer.name)}
-              </p>
-              <p className="text-center mb-6 text-gray-600">
-                {t(lang, 'blindBetWarning')}
-              </p>
-
-              <div className="flex gap-4 justify-center">
-                <button
-                  onClick={() => selectBlindBetType('skill')}
-                  disabled={!iAmCurrent}
-                  className="px-8 py-4 bg-blue-600 text-white text-xl font-bold rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
-                >
-                  {t(lang, 'skillTaskBtn')}
-                </button>
-                <button
-                  onClick={() => selectBlindBetType('mental')}
-                  disabled={!iAmCurrent}
-                  className="px-8 py-4 bg-green-600 text-white text-xl font-bold rounded-lg hover:bg-green-700 disabled:bg-gray-400"
-                >
-                  {t(lang, 'mentalTaskBtn')}
-                </button>
-              </div>
-              {!iAmCurrent && (
-                <p className="text-xs text-gray-500 text-center mt-3">{t(lang, 'waitingContinue', currentPlayer.name)}</p>
-              )}
-            </div>
-          )}
-
-          {(gs.phase === 'betting' || gs.phase === 'blindBetting') && (
-            <div className="bg-white rounded-xl shadow-xl p-8">
-              {gs.phase === 'betting' && !currentTask && (
-                <>
-                  <h2 className="text-2xl font-bold mb-4 text-center">{t(lang, 'mentalChallenge')}</h2>
-                  <div className="bg-purple-50 p-6 rounded-lg mb-6">
-                    <p className="text-xl font-semibold text-center">🔒 {t(lang, 'taskHiddenUntilBets')}</p>
-                  </div>
-                </>
-              )}
-
-              {gs.phase === 'betting' && currentTask && (
-                <>
-                  <h2 className="text-2xl font-bold mb-4 text-center">
-                    {currentTask.type === 'skill' ? t(lang, 'skillChallenge') : t(lang, 'mentalChallenge')}
-                  </h2>
-                  <div className="bg-purple-50 p-6 rounded-lg mb-6">
-                    <p className="text-xl font-semibold text-center mb-2">{currentTask.text}</p>
-                    <p className="text-center text-gray-600">{taskTimeText(currentTask)}</p>
-                  </div>
-                </>
-              )}
-
-              {gs.phase === 'blindBetting' && (
-                <>
-                  <h2 className="text-2xl font-bold mb-4 text-center">{t(lang, 'blindBettingTitle')}</h2>
-                  <p className="text-center mb-2 text-lg">
-                    {currentPlayer.name} {t(lang, 'hasChosen')}{' '}
-                    <span className="font-bold text-purple-600">
-                      {gs.blindBetTaskType === 'skill' ? t(lang, 'skillChallengeLower') : t(lang, 'mentalChallengeLower')}
-                    </span>
-                  </p>
-                  <p className="text-center mb-6 text-red-600 font-semibold">{t(lang, 'blindBettingWarning')}</p>
-                </>
-              )}
-
-              {iAmCurrent ? (
-                <div className="bg-blue-50 p-4 rounded-lg mb-6 text-center">
-                  <p className="font-semibold">{t(lang, 'waitingOnBets', betsCount, betsNeeded)}</p>
-                </div>
-              ) : myPlayerId === null ? null : myBet ? (
-                <div className="bg-green-50 border-2 border-green-400 p-4 rounded-lg mb-6 text-center">
-                  <p className="font-semibold text-green-700">
-                    {t(lang, 'youBet', myBet.amount, myBet.willSucceed ? t(lang, 'success') : t(lang, 'fail'))}
-                  </p>
-                </div>
-              ) : (
-                <BetForm player={gs.players[myPlayerId]} onBet={placeBet} error={betError} lang={lang} />
-              )}
-
-              <div className="bg-gray-50 p-4 rounded-lg mb-6">
-                <h3 className="font-bold text-lg mb-2">{t(lang, 'betsPlacedCount', betsCount, betsNeeded)}</h3>
-                <p className="text-xs text-gray-400 mb-2">{t(lang, 'betsSecretNote')}</p>
-                {otherPlayers.map(player => {
-                  const hasBet = betPlacedBy.includes(player.id);
-                  return (
-                    <p key={player.id} className="text-gray-700 text-sm">
-                      {player.name}: {hasBet ? t(lang, 'betPlaced') : t(lang, 'thinking')}
-                    </p>
-                  );
-                })}
-              </div>
-
-              <button
-                onClick={gs.phase === 'betting' ? startChallenge : revealBlindTask}
-                disabled={betsCount < betsNeeded || !iAmCurrent}
-                className="w-full py-3 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700 disabled:bg-gray-400"
-              >
-                {gs.phase === 'betting' ? t(lang, 'allBetsStartChallenge') : t(lang, 'allBetsRevealChallenge')}
-              </button>
-              {betsCount >= betsNeeded && !iAmCurrent && (
-                <p className="text-xs text-gray-500 text-center mt-2">{t(lang, 'waitingContinue', currentPlayer.name)}</p>
-              )}
-            </div>
-          )}
-
-          {gs.phase === 'revealBlindTask' && currentTask && (
-            <div className="bg-white rounded-xl shadow-xl p-8">
-              <h2 className="text-2xl font-bold mb-4 text-center">{t(lang, 'challengeRevealed')}</h2>
-
-              <div className="bg-yellow-100 border-4 border-yellow-400 p-6 rounded-lg mb-6">
-                <p className="text-2xl font-bold text-center mb-2">{currentTask.text}</p>
-                <p className="text-center text-gray-700 text-lg">⏱️ {taskTimeText(currentTask)}</p>
-              </div>
-
-              <div className="bg-blue-50 p-4 rounded-lg mb-6">
-                <h3 className="font-bold text-lg mb-2">{t(lang, 'betsPlacedTitle')}</h3>
-                <p className="text-xs text-gray-400 mb-2">{t(lang, 'betsSecretNote')}</p>
-                {otherPlayers.map(player => {
-                  const hasBet = betPlacedBy.includes(player.id);
-                  return (
-                    <p key={player.id} className="text-gray-700">
-                      {player.name}: {hasBet ? t(lang, 'betPlaced') : '—'}
-                    </p>
-                  );
-                })}
-              </div>
-
-              <button
-                onClick={startChallenge}
-                disabled={!iAmCurrent}
-                className="w-full py-4 bg-purple-600 text-white font-bold text-lg rounded-lg hover:bg-purple-700 disabled:bg-gray-400"
-              >
-                {t(lang, 'startChallengeBtn')}
-              </button>
-              {!iAmCurrent && (
-                <p className="text-xs text-gray-500 text-center mt-2">{t(lang, 'waitingContinue', currentPlayer.name)}</p>
-              )}
-            </div>
-          )}
-
-          {gs.phase === 'performing' && currentTask && (
-            <div className="bg-white rounded-xl shadow-xl p-8">
-              <h2 className="text-2xl font-bold mb-4 text-center">
-                {iAmCurrent ? t(lang, 'youPerforming') : t(lang, 'otherPerforming', currentPlayer.name)}
-              </h2>
-
-              <div className="bg-yellow-50 p-6 rounded-lg mb-6">
-                <p className="text-xl font-semibold text-center mb-2">{currentTask.text}</p>
-                <p className="text-center text-gray-600">
-                  {challengeTimeLeft !== null ? t(lang, 'secondsLeft', challengeTimeLeft) : taskTimeText(currentTask)}
-                </p>
-              </div>
-
-              {!gs.showResults && (iAmCurrent ? (
-                <>
-                  <div className="text-center mb-6">
-                    <p className="text-lg mb-2">{t(lang, 'didYouSucceed')}</p>
-                    <p className="text-xs text-gray-400">{t(lang, 'onlyYouJudge')}</p>
-                  </div>
-
-                  <div className="flex gap-4 justify-center">
-                    <button
-                      onClick={() => recordResult(true)}
-                      className="px-12 py-4 bg-green-500 text-white text-xl font-bold rounded-lg hover:bg-green-600"
-                    >
-                      {t(lang, 'successBtn')}
-                    </button>
-                    <button
-                      onClick={() => recordResult(false)}
-                      className="px-12 py-4 bg-red-500 text-white text-xl font-bold rounded-lg hover:bg-red-600"
-                    >
-                      {t(lang, 'failedBtn')}
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <p className="text-sm text-gray-500 text-center">{t(lang, 'waitingResult', currentPlayer.name)}</p>
-              ))}
-
-              {gs.showResults && (
-                <div className="mt-2 p-4 bg-blue-50 rounded-lg">
-                  <h3 className="font-bold text-lg mb-2">{t(lang, 'resultsTitle')}</h3>
-                  <p className="text-xl mb-2">{t(lang, 'taskLabel', gs.taskSuccess ? t(lang, 'taskCompleted') : t(lang, 'taskFailed'))}</p>
-                  {Object.entries(gs.bets || {}).map(([playerId, bet]) => {
-                    const player = gs.players[parseInt(playerId)];
-                    const won = bet.willSucceed === gs.taskSuccess;
-                    return (
-                      <p key={playerId} className={won ? 'text-green-600' : 'text-red-600'}>
-                        {player.name}: {won ? `+€${bet.amount}` : `-€${bet.amount}`}
-                      </p>
-                    );
-                  })}
-                  <button
-                    onClick={nextTurn}
-                    disabled={!iAmCurrent}
-                    className="w-full mt-4 py-3 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700 disabled:bg-gray-400"
-                  >
-                    {t(lang, 'continueBtn')}
-                  </button>
-                  {!iAmCurrent && (
-                    <p className="text-xs text-gray-500 text-center mt-2">{t(lang, 'waitingContinue', currentPlayer.name)}</p>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+    return shell(
+      <div className="grid place-items-center py-12 sm:py-24">
+        <Card className="w-full max-w-md p-6 text-center sm:p-8">
+          <h1 className="text-xl font-semibold tracking-tight">{t(lang, 'cantReachTitle')}</h1>
+          <p className="mt-2 text-sm text-zinc-600">{apiError}</p>
+          <Button block className="mt-6" onClick={() => window.location.reload()}>{t(lang, 'retry')}</Button>
+        </Card>
       </div>
     );
   }
 
-  return (
-    <>
-      <LanguageSwitcher lang={lang} setLang={setLang} />
-      {content}
-    </>
+  if (loading && !gs) {
+    return shell(
+      <div className="flex flex-col items-center justify-center gap-3 py-24">
+        <Spinner />
+        <p className="text-sm text-zinc-500">{t(lang, 'loadingGame')}</p>
+      </div>
+    );
+  }
+
+  if (gs.phase === 'lobby') {
+    const isMe = myPlayerId !== null && gs.players[myPlayerId];
+    const shareUrl = getShareUrl();
+    return shell(
+      <TwoColumn
+        main={<>
+          <Card className="p-5 sm:p-8">
+            <Eyebrow>{t(lang, 'lobbyTitle')}</Eyebrow>
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">{t(lang, 'title')}</h1>
+            <p className="mt-2 max-w-2xl text-zinc-600">{t(lang, 'lobbyIntro')}</p>
+            <div className="mt-6 max-w-md">
+              {isMe
+                ? <Notice tone="success">{t(lang, 'youAreIn', gs.players[myPlayerId].name)}</Notice>
+                : <JoinForm onJoin={joinGame} error={joinError} lang={lang} />}
+            </div>
+          </Card>
+
+          <Card>
+            <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4 sm:px-6">
+              <h2 className="font-semibold">{t(lang, 'playersJoined')}</h2>
+              <Badge>{gs.players.length}</Badge>
+            </div>
+            {gs.players.length === 0 ? (
+              <p className="px-5 py-8 text-center text-sm text-zinc-500 sm:px-6">{t(lang, 'noPlayersYet')}</p>
+            ) : (
+              <ul className="grid gap-2 p-4 sm:grid-cols-2 sm:p-5 xl:grid-cols-3">
+                {gs.players.map(p => (
+                  <li key={p.id} className="flex items-center gap-3 rounded-xl border border-zinc-200 px-3 py-2.5">
+                    <Avatar name={p.name} />
+                    <span className="min-w-0 flex-1 truncate font-medium">{p.name}</span>
+                    {p.id === myPlayerId && <Badge>{t(lang, 'youBadge')}</Badge>}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="border-t border-zinc-100 p-5 sm:p-6">
+              {isAdmin ? (
+                <Button block className="sm:w-auto sm:min-w-[220px]" onClick={startTheGame} disabled={gs.players.length === 0}>
+                  {t(lang, 'startGame')}
+                </Button>
+              ) : (
+                <Notice>{t(lang, 'waitingHostStart')}</Notice>
+              )}
+              {apiError && <p className="mt-3 text-sm text-rose-600">{apiError}</p>}
+            </div>
+          </Card>
+        </>}
+        side={<>
+          <Card className="p-5 sm:p-6">
+            <h2 className="font-semibold">{t(lang, 'inviteTitle')}</h2>
+            <p className="mt-1 text-sm text-zinc-500">{t(lang, 'inviteHint')}</p>
+            <div className="mx-auto mt-5 w-fit rounded-xl border border-zinc-200 bg-white p-3">
+              <img src={getQrImageUrl(shareUrl)} alt={t(lang, 'qrAlt')} width={200} height={200} className="block" />
+            </div>
+            <div className="mt-5 flex gap-2">
+              <input
+                readOnly
+                value={shareUrl}
+                onFocus={(e) => e.target.select()}
+                className="h-11 min-w-0 flex-1 rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-sm text-zinc-600 focus:outline-none"
+              />
+              <Button variant="secondary" size="md" onClick={copyLink}>
+                {copied ? t(lang, 'copied') : t(lang, 'copyLink')}
+              </Button>
+            </div>
+          </Card>
+
+          <Card className="p-5 sm:p-6">
+            <h2 className="font-semibold">{t(lang, 'howToPlayTitle')}</h2>
+            <ol className="mt-3 space-y-2 text-sm text-zinc-600">
+              {['howToPlay1', 'howToPlay2', 'howToPlay3', 'howToPlay4'].map((key, i) => (
+                <li key={key} className="flex gap-3">
+                  <span className="w-4 shrink-0 font-semibold tabular-nums text-zinc-400">{i + 1}</span>
+                  <span>{t(lang, key)}</span>
+                </li>
+              ))}
+            </ol>
+          </Card>
+          <p className="px-1 text-xs text-zinc-400">{t(lang, 'sameNetworkNote')}</p>
+        </>}
+      />
+    );
+  }
+
+  if (gs.phase === 'gameOver') {
+    const rankedPlayers = [...gs.players].sort(byMoneyThenName);
+    const winner = rankedPlayers[0];
+    return shell(
+      <div className="mx-auto w-full max-w-xl py-4 sm:py-12">
+        <Card className="p-6 sm:p-8">
+          <Eyebrow>{t(lang, 'gameOverTitle')}</Eyebrow>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">
+            {winner ? t(lang, 'winnerLabel', winner.name) : t(lang, 'gameOverTitle')}
+          </h1>
+          <ol className="mt-6 divide-y divide-zinc-100 overflow-hidden rounded-xl border border-zinc-200">
+            {rankedPlayers.map((player, index) => (
+              <li key={player.id} className={cx('flex items-center gap-3 px-4 py-3', index === 0 && 'bg-indigo-50/60')}>
+                <span className="w-6 text-sm font-semibold tabular-nums text-zinc-400">{index + 1}</span>
+                <span className="min-w-0 flex-1 truncate font-medium">{player.name}</span>
+                <span className="font-semibold tabular-nums">€{player.money}</span>
+              </li>
+            ))}
+          </ol>
+          <Button block className="mt-6" onClick={() => window.location.href = window.location.origin + window.location.pathname}>
+            {t(lang, 'playAgain')}
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+
+  const currentTask = currentTaskObject(gs);
+  const currentPlayer = gs.players[gs.currentPlayerIndex];
+  const taskTimeText = (task) => (task.time ? t(lang, 'timeLimit', task.time) : t(lang, 'noTimeLimit'));
+  const challengeTimeLeft = gs.performEndsAt
+    ? Math.max(0, Math.ceil((gs.performEndsAt - now) / 1000))
+    : null;
+  const iAmCurrent = myPlayerId === gs.currentPlayerIndex;
+  const otherPlayers = gs.players.filter((_, i) => i !== gs.currentPlayerIndex);
+  const betsCount = gs.betsCount || 0;
+  const betPlacedBy = gs.betPlacedBy || [];
+  const betsNeeded = gs.players.length - 1;
+  const myBet = myPlayerId !== null ? (gs.bets || {})[myPlayerId] : undefined;
+  const waitingContinue = !iAmCurrent && <Hint>{t(lang, 'waitingContinue', currentPlayer.name)}</Hint>;
+  const typeLabel = (type) => (type === 'skill' ? t(lang, 'skillChallenge') : t(lang, 'mentalChallenge'));
+
+  let phaseView = null;
+
+  if (gs.phase === 'playing') {
+    phaseView = (
+      <Panel title={iAmCurrent ? t(lang, 'yourTurn') : t(lang, 'turnOf', currentPlayer.name)}>
+        <div className="flex flex-col items-center py-4 text-center sm:py-8">
+          {gs.diceValue && (
+            <div className="mb-6">
+              <div className="mx-auto grid h-24 w-24 place-items-center rounded-2xl border-2 border-zinc-900 text-5xl font-bold tabular-nums">
+                {gs.diceValue}
+              </div>
+              <p className="mt-3 text-zinc-600">{t(lang, 'rolled', gs.diceValue)}</p>
+            </div>
+          )}
+          <Button block className="sm:w-auto sm:min-w-[240px]" onClick={rollDice} disabled={gs.diceValue !== null || !iAmCurrent}>
+            {t(lang, 'rollDice')}
+          </Button>
+          {!iAmCurrent && <Hint>{t(lang, 'waitingRoll', currentPlayer.name)}</Hint>}
+        </div>
+      </Panel>
+    );
+  } else if (gs.phase === 'blindBet') {
+    phaseView = (
+      <Panel
+        eyebrow={t(lang, 'blindBetTitle')}
+        title={iAmCurrent ? t(lang, 'chooseChallengeType') : t(lang, 'chooseChallengeTypeOther', currentPlayer.name)}
+      >
+        <Notice tone="warning" className="mb-6">{t(lang, 'blindBetWarning')}</Notice>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {[['skill', 'skillTaskBtn'], ['mental', 'mentalTaskBtn']].map(([type, key]) => (
+            <button
+              key={type}
+              type="button"
+              onClick={() => selectBlindBetType(type)}
+              disabled={!iAmCurrent}
+              className="rounded-xl border border-zinc-200 bg-white p-5 text-left transition-colors hover:border-indigo-500 hover:bg-indigo-50/40 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-zinc-200 disabled:hover:bg-white"
+            >
+              <span className="block text-base font-semibold">{t(lang, key)}</span>
+            </button>
+          ))}
+        </div>
+        {waitingContinue}
+      </Panel>
+    );
+  } else if (gs.phase === 'betting' || gs.phase === 'blindBetting') {
+    const isBlind = gs.phase === 'blindBetting';
+    phaseView = (
+      <Panel
+        eyebrow={isBlind ? t(lang, 'blindBettingTitle') : typeLabel(gs.currentTaskType)}
+        title={isBlind
+          ? `${currentPlayer.name} ${t(lang, 'hasChosen')} ${gs.blindBetTaskType === 'skill' ? t(lang, 'skillChallengeLower') : t(lang, 'mentalChallengeLower')}`
+          : null}
+      >
+        {isBlind
+          ? <Notice tone="warning" className="mb-6">{t(lang, 'blindBettingWarning')}</Notice>
+          : currentTask
+            ? <div className="mb-6"><TaskCard text={currentTask.text} meta={taskTimeText(currentTask)} /></div>
+            : <div className="mb-6"><TaskCard muted text={t(lang, 'taskHiddenUntilBets')} /></div>}
+
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div>
+            {iAmCurrent ? (
+              <Notice tone="accent">{t(lang, 'waitingOnBets', betsCount, betsNeeded)}</Notice>
+            ) : myPlayerId === null ? null : myBet ? (
+              <Notice tone="success">
+                {t(lang, 'youBet', myBet.amount, myBet.willSucceed ? t(lang, 'success') : t(lang, 'fail'))}
+              </Notice>
+            ) : (
+              <BetForm player={gs.players[myPlayerId]} onBet={placeBet} error={betError} lang={lang} />
+            )}
+          </div>
+          <div>
+            <div className="mb-2 flex items-baseline justify-between gap-3">
+              <h3 className="text-sm font-semibold">{t(lang, 'betsPlacedCount', betsCount, betsNeeded)}</h3>
+            </div>
+            <BetStatusList players={otherPlayers} placedBy={betPlacedBy} pendingLabel={t(lang, 'thinking')} lang={lang} />
+            <p className="mt-2 text-xs text-zinc-400">{t(lang, 'betsSecretNote')}</p>
+          </div>
+        </div>
+
+        <div className="mt-6 border-t border-zinc-100 pt-6">
+          <Button block onClick={isBlind ? revealBlindTask : startChallenge} disabled={betsCount < betsNeeded || !iAmCurrent}>
+            {isBlind ? t(lang, 'allBetsRevealChallenge') : t(lang, 'allBetsStartChallenge')}
+          </Button>
+          {betsCount >= betsNeeded && waitingContinue}
+        </div>
+      </Panel>
+    );
+  } else if (gs.phase === 'revealBlindTask' && currentTask) {
+    phaseView = (
+      <Panel eyebrow={typeLabel(currentTask.type)} title={t(lang, 'challengeRevealed')}>
+        <TaskCard text={currentTask.text} meta={taskTimeText(currentTask)} />
+        <div className="mt-6">
+          <h3 className="mb-2 text-sm font-semibold">{t(lang, 'betsPlacedTitle')}</h3>
+          <BetStatusList players={otherPlayers} placedBy={betPlacedBy} pendingLabel="—" lang={lang} />
+          <p className="mt-2 text-xs text-zinc-400">{t(lang, 'betsSecretNote')}</p>
+        </div>
+        <div className="mt-6 border-t border-zinc-100 pt-6">
+          <Button block onClick={startChallenge} disabled={!iAmCurrent}>{t(lang, 'startChallengeBtn')}</Button>
+          {waitingContinue}
+        </div>
+      </Panel>
+    );
+  } else if (gs.phase === 'performing' && currentTask) {
+    const total = currentTask.time || 0;
+    const progress = total && challengeTimeLeft !== null ? Math.min(100, (challengeTimeLeft / total) * 100) : 0;
+    phaseView = (
+      <Panel
+        eyebrow={typeLabel(currentTask.type)}
+        title={iAmCurrent ? t(lang, 'youPerforming') : t(lang, 'otherPerforming', currentPlayer.name)}
+      >
+        <TaskCard text={currentTask.text} />
+
+        {!gs.showResults && (
+          <div className="mt-6">
+            {challengeTimeLeft !== null ? (
+              <div>
+                <p className={cx('text-3xl font-semibold tabular-nums', challengeTimeLeft === 0 ? 'text-rose-600' : 'text-zinc-900')}>
+                  {t(lang, 'secondsLeft', challengeTimeLeft)}
+                </p>
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-zinc-100">
+                  <div className="h-full rounded-full bg-indigo-600 transition-[width] duration-1000 ease-linear" style={{ width: `${progress}%` }} />
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-zinc-500">{t(lang, 'noTimeLimit')}</p>
+            )}
+          </div>
+        )}
+
+        {!gs.showResults && (
+          <div className="mt-6 border-t border-zinc-100 pt-6">
+            {iAmCurrent ? (
+              <>
+                <p className="font-semibold">{t(lang, 'didYouSucceed')}</p>
+                <p className="mt-1 text-sm text-zinc-500">{t(lang, 'onlyYouJudge')}</p>
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  <Button variant="success" onClick={() => recordResult(true)}>{t(lang, 'successBtn')}</Button>
+                  <Button variant="danger" onClick={() => recordResult(false)}>{t(lang, 'failedBtn')}</Button>
+                </div>
+              </>
+            ) : (
+              <Notice>{t(lang, 'waitingResult', currentPlayer.name)}</Notice>
+            )}
+          </div>
+        )}
+
+        {gs.showResults && (
+          <div className="mt-6 border-t border-zinc-100 pt-6">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h3 className="font-semibold">{t(lang, 'resultsTitle')}</h3>
+              <Badge tone={gs.taskSuccess ? 'success' : 'danger'}>
+                {gs.taskSuccess ? t(lang, 'taskCompleted') : t(lang, 'taskFailed')}
+              </Badge>
+            </div>
+            {Object.keys(gs.bets || {}).length > 0 && (
+              <ul className="divide-y divide-zinc-100 rounded-xl border border-zinc-200">
+                {Object.entries(gs.bets || {}).map(([playerId, bet]) => {
+                  const player = gs.players[parseInt(playerId)];
+                  const won = bet.willSucceed === gs.taskSuccess;
+                  return (
+                    <li key={playerId} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
+                      <span className="truncate font-medium">{player.name}</span>
+                      <span className={cx('font-semibold tabular-nums', won ? 'text-emerald-600' : 'text-rose-600')}>
+                        {won ? `+€${bet.amount}` : `−€${bet.amount}`}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            <Button block className="mt-6" onClick={nextTurn} disabled={!iAmCurrent}>{t(lang, 'continueBtn')}</Button>
+            {waitingContinue}
+          </div>
+        )}
+      </Panel>
+    );
+  }
+
+  return shell(
+    <TwoColumn
+      main={<>
+        {renderJoinBar()}
+        {apiError && <Notice tone="danger">{apiError}</Notice>}
+        {phaseView}
+      </>}
+      side={<Standings players={gs.players} currentId={gs.currentPlayerIndex} myId={myPlayerId} lang={lang} />}
+    />,
+    iAmCurrent && <Button variant="ghost" size="sm" onClick={endGame}>{t(lang, 'endGame')}</Button>
   );
 };
 
