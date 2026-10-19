@@ -1036,6 +1036,32 @@ const BetYouCantGame = () => {
   const nextTurn = () => post('/nextTurn');
   const endGame = () => post('/end');
 
+  // QR code and link for joining; shown in the lobby and, mid-game, next to
+  // the standings so latecomers can still get in.
+  const renderInviteCard = () => {
+    const shareUrl = getShareUrl();
+    return (
+      <Card className="p-5 sm:p-6">
+        <h2 className="font-semibold">{t(lang, 'inviteTitle')}</h2>
+        <p className="mt-1 text-sm text-zinc-500">{t(lang, 'inviteHint')}</p>
+        <div className="mx-auto mt-5 w-fit rounded-xl border border-zinc-200 bg-white p-3">
+          <img src={getQrImageUrl(shareUrl)} alt={t(lang, 'qrAlt')} width={200} height={200} className="block" />
+        </div>
+        <div className="mt-5 flex gap-2">
+          <input
+            readOnly
+            value={shareUrl}
+            onFocus={(e) => e.target.select()}
+            className="h-11 min-w-0 flex-1 rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-sm text-zinc-600 focus:outline-none"
+          />
+          <Button variant="secondary" size="md" onClick={copyLink}>
+            {copied ? t(lang, 'copied') : t(lang, 'copyLink')}
+          </Button>
+        </div>
+      </Card>
+    );
+  };
+
   const renderJoinBar = () => {
     if (myPlayerId !== null || !gs || !gs.players) return null;
     return (
@@ -1073,7 +1099,6 @@ const BetYouCantGame = () => {
 
   if (gs.phase === 'lobby') {
     const isMe = myPlayerId !== null && gs.players[myPlayerId];
-    const shareUrl = getShareUrl();
     return shell(
       <TwoColumn
         main={<>
@@ -1130,24 +1155,7 @@ const BetYouCantGame = () => {
           )}
         </>}
         side={<>
-          <Card className="p-5 sm:p-6">
-            <h2 className="font-semibold">{t(lang, 'inviteTitle')}</h2>
-            <p className="mt-1 text-sm text-zinc-500">{t(lang, 'inviteHint')}</p>
-            <div className="mx-auto mt-5 w-fit rounded-xl border border-zinc-200 bg-white p-3">
-              <img src={getQrImageUrl(shareUrl)} alt={t(lang, 'qrAlt')} width={200} height={200} className="block" />
-            </div>
-            <div className="mt-5 flex gap-2">
-              <input
-                readOnly
-                value={shareUrl}
-                onFocus={(e) => e.target.select()}
-                className="h-11 min-w-0 flex-1 rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-sm text-zinc-600 focus:outline-none"
-              />
-              <Button variant="secondary" size="md" onClick={copyLink}>
-                {copied ? t(lang, 'copied') : t(lang, 'copyLink')}
-              </Button>
-            </div>
-          </Card>
+          {renderInviteCard()}
 
           <Card className="p-5 sm:p-6">
             <h2 className="font-semibold">{t(lang, 'howToPlayTitle')}</h2>
@@ -1401,9 +1409,14 @@ const BetYouCantGame = () => {
   return shell(
     <>
       {showingStandings && (
-        <div className="mx-auto w-full max-w-2xl space-y-4">
-          <Standings players={gs.players} currentId={gs.currentPlayerIndex} myId={myPlayerId} lang={lang} />
-          <Button variant="secondary" block onClick={toggleStandings}>{t(lang, 'backToGame')}</Button>
+        <div className="mx-auto w-full max-w-5xl">
+          <TwoColumn
+            main={<>
+              <Standings players={gs.players} currentId={gs.currentPlayerIndex} myId={myPlayerId} lang={lang} />
+              <Button variant="secondary" block onClick={toggleStandings}>{t(lang, 'backToGame')}</Button>
+            </>}
+            side={renderInviteCard()}
+          />
         </div>
       )}
       <div className={cx('space-y-4 lg:space-y-6', showingStandings && 'hidden')}>
