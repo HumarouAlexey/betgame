@@ -104,6 +104,10 @@ type Game struct {
 	// clients as part of GameState — only handed out once, to the phone
 	// that joined as that player (see handleJoin).
 	playerTokens []string
+	// playerLangs[i] is the language player i last had the page in ("en"
+	// or "ru"), as sent with their requests; it decides which songs the
+	// game gets (see mostlyRussian).
+	playerLangs []string
 	// typeBag holds the challenge types still to be dealt from the current
 	// shuffled bag (see drawTaskType); lastType is the one dealt most recently.
 	typeBag  []string
@@ -262,7 +266,34 @@ func sanitizeState(state GameState, viewerID *int) GameState {
 }
 
 func respondState(w http.ResponseWriter, r *http.Request, g *Game) {
-	writeJSON(w, sanitizeState(g.state, viewerFromRequest(g, r)))
+	viewer := viewerFromRequest(g, r)
+	if viewer != nil {
+		if lang := requestLang(r); lang != "" {
+			g.playerLangs[*viewer] = lang
+		}
+	}
+	writeJSON(w, sanitizeState(g.state, viewer))
+}
+
+// requestLang is the page language sent as ?lang=, or "" if none.
+func requestLang(r *http.Request) string {
+	switch lang := r.URL.Query().Get("lang"); lang {
+	case "en", "ru":
+		return lang
+	}
+	return ""
+}
+
+// mostlyRussian reports whether more than half the players have the page in
+// Russian, in which case the game mixes Russian songs in with the rest.
+func (g *Game) mostlyRussian() bool {
+	ru := 0
+	for _, lang := range g.playerLangs {
+		if lang == "ru" {
+			ru++
+		}
+	}
+	return ru*2 > len(g.playerLangs)
 }
 
 // requireCurrentPlayer rejects the request unless it was made by the game's
@@ -388,6 +419,7 @@ func handleCreateGame(w http.ResponseWriter, r *http.Request) {
 	games[id] = &Game{
 		state:        state,
 		playerTokens: []string{},
+		playerLangs:  []string{},
 	}
 	gamesMu.Unlock()
 
@@ -475,6 +507,7 @@ func handleJoin(w http.ResponseWriter, r *http.Request, id string) {
 	g.state.Players = append(g.state.Players, Player{ID: idx, Name: name, Money: startingMoney, Position: 0})
 	token := randomToken(24)
 	g.playerTokens = append(g.playerTokens, token)
+	g.playerLangs = append(g.playerLangs, requestLang(r))
 	writeJSON(w, map[string]interface{}{
 		"token": token,
 		"state": sanitizeState(g.state, &idx),
@@ -536,7 +569,7 @@ func handleRoll(w http.ResponseWriter, r *http.Request, id string) {
 		g.state.Phase = "betting"
 	case "music":
 		g.state.CurrentTaskType = &t
-		g.state.Track = pickTrack()
+		g.state.Track = pickTrack(g.mostlyRussian())
 		g.state.Phase = "betting"
 	case "duel":
 		// The duel is dealt first, so the performer picks an opponent
@@ -609,7 +642,7 @@ func handleReveal(w http.ResponseWriter, r *http.Request, id string) {
 		idx, g.state.UsedMentalTasks = pickUnused(mentalTaskCount, g.state.UsedMentalTasks)
 		g.state.CurrentTaskIndex = &idx
 	case "music":
-		g.state.Track = pickTrack()
+		g.state.Track = pickTrack(g.mostlyRussian())
 	}
 	g.state.CurrentTaskType = &t
 	g.state.Phase = "revealBlindTask"
@@ -851,6 +884,7 @@ func (g *Game) removePlayer(k int) {
 		s.Players[i].ID = i
 	}
 	g.playerTokens = append(g.playerTokens[:k], g.playerTokens[k+1:]...)
+	g.playerLangs = append(g.playerLangs[:k], g.playerLangs[k+1:]...)
 
 	shift := func(i int) int {
 		if i > k {

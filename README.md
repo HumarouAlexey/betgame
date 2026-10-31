@@ -51,12 +51,20 @@ they have to name the artist or band before it ends (the song title isn't
 needed). Everyone else sees the answer while betting; the performer sees
 it once they tap "I've answered", the clip runs out, or the results are in.
 
-Clips are Deezer's free 30-second previews (no account or API key). The
-server picks songs from Deezer's chart; to use your own list instead, make
-a public Deezer playlist and start the server with its id (the number in
-the playlist's link):
+Clips are Deezer's free 30-second previews (no account or API key). Songs
+come from two pools: international hits (Deezer's chart, mostly in
+English) and Russian hits (three public Deezer playlists: hits of the
+2000s, hits of 2025 and Russian rock). If more than half the players have
+the page in Russian, each song comes from either pool, half and half;
+otherwise every song is from the international pool. The language is
+whatever each player has picked with the EN / RU switch.
 
-    BETGAME_DEEZER_PLAYLIST=1234567890 ./betgame
+To use other playlists, start the server with their ids (the number in a
+playlist's link). `BETGAME_DEEZER_PLAYLIST` replaces the chart, and
+`BETGAME_DEEZER_RU_PLAYLISTS` (comma-separated) replaces the Russian
+playlists:
+
+    BETGAME_DEEZER_PLAYLIST=1234567890 BETGAME_DEEZER_RU_PLAYLISTS=111,222 ./betgame
 
 A song doesn't come back, in any game on this server, until every song in
 the list has been played. The played songs are remembered in

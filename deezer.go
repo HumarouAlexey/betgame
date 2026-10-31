@@ -10,14 +10,20 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 )
 
 // Song challenges play a 30-second preview from Deezer's public API, which
-// needs no key. The server keeps a list of tracks (Deezer's chart, or the
-// playlist named by BETGAME_DEEZER_PLAYLIST) refreshed in the background,
-// so dealing a song never waits on the network. Deezer's preview links
+// needs no key. Songs come from two pools, refreshed in the background so
+// dealing a song never waits on the network:
+//   - international hits: Deezer's chart (mostly English), or the playlist
+//     named by BETGAME_DEEZER_PLAYLIST;
+//   - Russian hits: a few public playlists, or the comma-separated ones in
+//     BETGAME_DEEZER_RU_PLAYLISTS.
+// A game where most players have the page in Russian gets both pools, half
+// and half; any other game gets only the international one. Deezer's preview links
 // expire after about 15 minutes, so they are never stored: the client plays
 // /songPreview, which looks up a fresh link and redirects to it.
 
@@ -38,11 +44,21 @@ type Track struct {
 	Cover  string `json:"cover,omitempty"`
 }
 
+const (
+	poolEN = "en"
+	poolRU = "ru"
+)
+
+// defaultRussianPlaylists are public Deezer playlists: Russian hits of the
+// 2000s, Russian hits of 2025, and Russian rock.
+var defaultRussianPlaylists = []string{"11037907182", "13750793941", "3459300842"}
+
 var (
 	tracksMu sync.Mutex
-	// tracks is replaced only by a non-empty list, so once song challenges
-	// are available they stay available.
-	tracks []Track
+	// pools maps poolEN / poolRU to its tracks. A pool is replaced only by
+	// a non-empty list, so once song challenges are available they stay
+	// available.
+	pools = map[string][]Track{}
 )
 
 var deezerClient = &http.Client{Timeout: 10 * time.Second}
@@ -90,19 +106,39 @@ func deezerGet(path string, v interface{}) error {
 	return json.Unmarshal(raw, v)
 }
 
-func trackListPath() string {
-	if id := os.Getenv("BETGAME_DEEZER_PLAYLIST"); id != "" {
-		return "/playlist/" + url.PathEscape(id) + "/tracks?limit=1000"
-	}
-	return "/chart/0/tracks?limit=100"
+func playlistPath(id string) string {
+	return "/playlist/" + url.PathEscape(id) + "/tracks?limit=1000"
 }
 
-func refreshTracks() error {
+// poolSources lists the Deezer API paths each pool is filled from.
+func poolSources() map[string][]string {
+	en := []string{"/chart/0/tracks?limit=100"}
+	if id := strings.TrimSpace(os.Getenv("BETGAME_DEEZER_PLAYLIST")); id != "" {
+		en = []string{playlistPath(id)}
+	}
+	ruIDs := defaultRussianPlaylists
+	if v := os.Getenv("BETGAME_DEEZER_RU_PLAYLISTS"); strings.TrimSpace(v) != "" {
+		ruIDs = nil
+		for _, id := range strings.Split(v, ",") {
+			if id = strings.TrimSpace(id); id != "" {
+				ruIDs = append(ruIDs, id)
+			}
+		}
+	}
+	ru := make([]string, len(ruIDs))
+	for i, id := range ruIDs {
+		ru[i] = playlistPath(id)
+	}
+	return map[string][]string{poolEN: en, poolRU: ru}
+}
+
+// fetchTracks returns the playable tracks at a chart or playlist path.
+func fetchTracks(path string) ([]Track, error) {
 	var resp struct {
 		Data []deezerTrack `json:"data"`
 	}
-	if err := deezerGet(trackListPath(), &resp); err != nil {
-		return err
+	if err := deezerGet(path, &resp); err != nil {
+		return nil, err
 	}
 	list := make([]Track, 0, len(resp.Data))
 	for _, d := range resp.Data {
@@ -110,27 +146,53 @@ func refreshTracks() error {
 			list = append(list, Track{ID: d.ID, Title: d.Title, Artist: d.Artist.Name, Cover: d.Album.Cover})
 		}
 	}
-	if len(list) == 0 {
-		return errors.New("deezer: no playable tracks in the list")
+	return list, nil
+}
+
+// refreshTracks refills every pool. A source that fails is reported, and
+// the pool keeps its previous tracks if none of its sources answered.
+func refreshTracks() error {
+	var errs []error
+	for pool, paths := range poolSources() {
+		seen := map[int64]bool{}
+		var list []Track
+		for _, path := range paths {
+			tracks, err := fetchTracks(path)
+			if err != nil {
+				errs = append(errs, fmt.Errorf("%s: %w", path, err))
+				continue
+			}
+			for _, t := range tracks {
+				if !seen[t.ID] {
+					seen[t.ID] = true
+					list = append(list, t)
+				}
+			}
+		}
+		if len(list) == 0 {
+			errs = append(errs, fmt.Errorf("%s pool: no playable tracks", pool))
+			continue
+		}
+		tracksMu.Lock()
+		pools[pool] = list
+		tracksMu.Unlock()
 	}
-	tracksMu.Lock()
-	tracks = list
-	tracksMu.Unlock()
-	return nil
+	return errors.Join(errs...)
 }
 
 // keepTracksFresh runs for the life of the server. Without internet access
-// the game still works, just without song challenges.
+// the game still works, just without song challenges; without the Russian
+// pool, every game gets international songs only.
 func keepTracksFresh() {
 	failing := false
 	for {
 		err := refreshTracks()
 		switch {
 		case err != nil && !failing:
-			log.Printf("Задания с песнями недоступны (%v), пробую снова каждые %v", err, trackRetryInterval)
+			log.Printf("Не все песни загрузились с Deezer (%v), пробую снова каждые %v", err, trackRetryInterval)
 			failing = true
 		case err == nil && failing:
-			log.Printf("Задания с песнями снова доступны")
+			log.Printf("Песни с Deezer снова загружаются")
 			failing = false
 		}
 		if failing {
@@ -144,7 +206,7 @@ func keepTracksFresh() {
 func musicAvailable() bool {
 	tracksMu.Lock()
 	defer tracksMu.Unlock()
-	return len(tracks) > 0
+	return len(pools[poolEN]) > 0
 }
 
 // played holds the Deezer ids of every song dealt on this server, across
@@ -194,12 +256,17 @@ func savePlayedTracks() {
 	}
 }
 
-// pickTrack deals a song nobody on this server has heard yet. Once every
-// song in the current list has been played, the list starts over. Callers
-// check musicAvailable first.
-func pickTrack() *Track {
+// pickTrack deals a song nobody on this server has heard yet. With
+// withRussian, it comes from the Russian pool half the time. Once every
+// song in a pool has been played, that pool starts over. Callers check
+// musicAvailable first.
+func pickTrack(withRussian bool) *Track {
 	tracksMu.Lock()
 	defer tracksMu.Unlock()
+	tracks := pools[poolEN]
+	if withRussian && len(pools[poolRU]) > 0 && mrand.Intn(2) == 0 {
+		tracks = pools[poolRU]
+	}
 	available := make([]Track, 0, len(tracks))
 	for _, t := range tracks {
 		if !played[t.ID] {
