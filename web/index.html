@@ -32,6 +32,9 @@ const STARTING_MONEY = 100;
 const RESCUE_AMOUNT = 100;
 // Length of a Deezer preview, and so of a song challenge (songSeconds in deezer.go).
 const SONG_SECONDS = 30;
+// "Exactly 10 seconds" counts within this many seconds either way.
+const TEN_SECONDS_TOLERANCE = 0.3;
+const COLOR_SEQUENCE_LENGTH = 7;
 
 // ---- i18n ----
 const STRINGS = {
@@ -53,7 +56,7 @@ const STRINGS = {
     loadingGame: 'Loading game…',
     howToPlayTitle: 'How to Play',
     howToPlay1: 'Roll dice and move around the board',
-    howToPlay2: 'Complete skill, mental and song challenges',
+    howToPlay2: 'Complete challenges, guess songs and win duels',
     howToPlay3: 'Bet on whether others will succeed',
     howToPlay4: 'Collect the most money to win!',
     lobbyIntro: 'Everyone opens this link or scans the QR code on their own phone and joins under their name.',
@@ -116,7 +119,7 @@ const STRINGS = {
     skillChallenge: 'Skill Challenge',
     mentalChallenge: 'Mental Challenge',
     musicChallenge: 'Guess the Song',
-    musicTaskText: `Can the player name the artist or band before the ${SONG_SECONDS}-second clip ends? The song title isn't needed. One answer, no hints.`,
+    musicTaskText: 'Can the player name the artist or band?',
     songHidden: "The song stays hidden from you until you've answered.",
     songAnswer: 'Artist',
     songPlaysOn: (name) => `The clip plays on ${name}'s phone.`,
@@ -131,6 +134,27 @@ const STRINGS = {
     skillChallengeLower: 'skill challenge',
     mentalChallengeLower: 'mental challenge',
     musicChallengeLower: 'song challenge',
+    duelChallenge: 'Duel',
+    chooseOpponent: 'Choose your opponent',
+    choosingOpponent: (name) => `${name} is choosing an opponent…`,
+    duelVs: (a, b) => `${a} vs ${b}`,
+    duelBetHint: 'Bet on who wins.',
+    duelistNoBet: "You're in the duel, so no bet for you this time.",
+    whoWon: 'Who won?',
+    duelTie: 'A tie? Play it again.',
+    duelWinner: (name) => `${name} wins`,
+    playingOnPhone: (name) => `${name} is playing on their phone…`,
+    playOnPhone: 'The phone keeps score: no need to record the result.',
+    tenStart: 'Start',
+    tenStop: 'Stop',
+    tenReady: 'Tap Start, count to 10 in your head, then tap Stop.',
+    tenRunning: 'Counting… tap Stop at 10.',
+    stoppedAt: (s) => `Stopped at ${s} s`,
+    colorsShow: 'Show the colors',
+    colorsReady: (n) => `${n} colors will light up one at a time. Then tap them in the same order.`,
+    colorsWatch: 'Watch closely…',
+    colorsRepeat: (n, total) => `Your turn: ${n} of ${total}`,
+    colorsScore: (s) => `Colors repeated: ${s}`,
     blindBettingWarning: 'Place your bets WITHOUT knowing the task!',
     waitingOnBets: (count, needed) => `Waiting on bets: ${count}/${needed}`,
     youBet: (amount, outcome) => `You bet €${amount} on ${outcome} — waiting for the others.`,
@@ -179,7 +203,7 @@ const STRINGS = {
     loadingGame: 'Загрузка игры…',
     howToPlayTitle: 'Как играть',
     howToPlay1: 'Бросай кубик и двигайся по полю',
-    howToPlay2: 'Выполняй задания на ловкость, смекалку и угадывай песни',
+    howToPlay2: 'Выполняй задания, угадывай песни и побеждай в дуэлях',
     howToPlay3: 'Делай ставки на успех других игроков',
     howToPlay4: 'Собери больше всех денег и победи!',
     lobbyIntro: 'Каждый открывает эту ссылку или сканирует QR-код на своём телефоне и присоединяется под своим именем.',
@@ -242,7 +266,7 @@ const STRINGS = {
     skillChallenge: 'Испытание на ловкость',
     mentalChallenge: 'Испытание на смекалку',
     musicChallenge: 'Угадай песню',
-    musicTaskText: `Сможет ли игрок назвать исполнителя или группу, пока не закончился ${SONG_SECONDS}-секундный отрывок? Название песни не нужно. Один ответ, без подсказок.`,
+    musicTaskText: 'Сможет ли игрок назвать исполнителя или группу?',
     songHidden: 'Песня скрыта от тебя, пока ты не ответишь.',
     songAnswer: 'Исполнитель',
     songPlaysOn: (name) => `Отрывок играет на телефоне игрока ${name}.`,
@@ -257,6 +281,27 @@ const STRINGS = {
     skillChallengeLower: 'испытание на ловкость',
     mentalChallengeLower: 'испытание на смекалку',
     musicChallengeLower: 'испытание «угадай песню»',
+    duelChallenge: 'Дуэль',
+    chooseOpponent: 'Выберите соперника',
+    choosingOpponent: (name) => `${name} выбирает соперника…`,
+    duelVs: (a, b) => `${a} против ${b}`,
+    duelBetHint: 'Ставьте на победителя.',
+    duelistNoBet: 'Ты участвуешь в дуэли, поэтому в этот раз без ставки.',
+    whoWon: 'Кто победил?',
+    duelTie: 'Ничья? Переиграйте.',
+    duelWinner: (name) => `Победил ${name}`,
+    playingOnPhone: (name) => `${name} играет на своём телефоне…`,
+    playOnPhone: 'Результат засчитает телефон, отмечать его не нужно.',
+    tenStart: 'Старт',
+    tenStop: 'Стоп',
+    tenReady: 'Нажми «Старт», посчитай про себя до 10 и нажми «Стоп».',
+    tenRunning: 'Считай… нажми «Стоп» на десяти.',
+    stoppedAt: (s) => `Остановлено на ${s} с`,
+    colorsShow: 'Показать цвета',
+    colorsReady: (n) => `По очереди загорятся ${n} цветов. Потом нажми их в том же порядке.`,
+    colorsWatch: 'Запоминай…',
+    colorsRepeat: (n, total) => `Повтори: ${n} из ${total}`,
+    colorsScore: (s) => `Повторено цветов: ${s}`,
     blindBettingWarning: 'Сделайте ставки, НЕ зная задания!',
     waitingOnBets: (count, needed) => `Ожидаем ставки: ${count}/${needed}`,
     youBet: (amount, outcome) => `Вы поставили €${amount} на ${outcome} — ждём остальных.`,
@@ -495,6 +540,108 @@ const SongCard = ({ track, lang }) => {
   );
 };
 
+const formatSeconds = (s, lang) => (lang === 'ru' ? s.replace('.', ',') : s);
+
+// What a phone mini-game measured, as reported with the results.
+const gameDetailText = (game, detail, lang) => {
+  if (!detail) return null;
+  if (game === 'tenSeconds') return t(lang, 'stoppedAt', formatSeconds(detail, lang));
+  if (game === 'colors') return t(lang, 'colorsScore', detail);
+  return null;
+};
+
+// Phone mini-games call onDone(success, detail) once, when they're over;
+// the phone itself judges the result.
+const TenSecondsGame = ({ lang, onDone }) => {
+  const [startedAt, setStartedAt] = useState(null);
+  const [stoppedAt, setStoppedAt] = useState(null);
+  const stop = () => {
+    const secs = (performance.now() - startedAt) / 1000;
+    setStoppedAt(secs);
+    onDone(Math.abs(secs - 10) <= TEN_SECONDS_TOLERANCE, secs.toFixed(2));
+  };
+  if (stoppedAt !== null) {
+    return <p className="text-center text-3xl font-semibold tabular-nums">{t(lang, 'stoppedAt', formatSeconds(stoppedAt.toFixed(2), lang))}</p>;
+  }
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-zinc-500">{startedAt === null ? t(lang, 'tenReady') : t(lang, 'tenRunning')}</p>
+      {startedAt === null
+        ? <Button block className="min-h-[5rem] text-xl" onClick={() => setStartedAt(performance.now())}>{t(lang, 'tenStart')}</Button>
+        : <Button block variant="danger" className="min-h-[5rem] text-xl" onClick={stop}>{t(lang, 'tenStop')}</Button>}
+    </div>
+  );
+};
+
+const GAME_COLORS = ['bg-rose-500', 'bg-emerald-500', 'bg-sky-500', 'bg-amber-400'];
+
+const ColorsGame = ({ lang, onDone }) => {
+  const [sequence] = useState(() =>
+    Array.from({ length: COLOR_SEQUENCE_LENGTH }, () => Math.floor(Math.random() * GAME_COLORS.length))
+  );
+  // ready → showing → input → done
+  const [stage, setStage] = useState('ready');
+  const [lit, setLit] = useState(null);
+  const [entered, setEntered] = useState(0);
+  const timers = React.useRef([]);
+  useEffect(() => () => timers.current.forEach(clearTimeout), []);
+
+  // Each colour lights for a moment with a short gap after it, so the same
+  // colour twice in a row reads as two flashes.
+  const show = () => {
+    setStage('showing');
+    const at = (ms, fn) => timers.current.push(setTimeout(fn, ms));
+    sequence.forEach((c, i) => {
+      at(500 + i * 800, () => setLit(c));
+      at(500 + i * 800 + 550, () => setLit(null));
+    });
+    at(500 + sequence.length * 800, () => setStage('input'));
+  };
+  const tap = (c) => {
+    if (stage !== 'input') return;
+    if (c !== sequence[entered]) {
+      setStage('done');
+      onDone(false, `${entered}/${sequence.length}`);
+      return;
+    }
+    const n = entered + 1;
+    setEntered(n);
+    if (n === sequence.length) {
+      setStage('done');
+      onDone(true, `${n}/${n}`);
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-zinc-500">
+        {stage === 'ready' && t(lang, 'colorsReady', sequence.length)}
+        {stage === 'showing' && t(lang, 'colorsWatch')}
+        {stage === 'input' && t(lang, 'colorsRepeat', entered, sequence.length)}
+        {stage === 'done' && t(lang, 'colorsScore', `${entered}/${sequence.length}`)}
+      </p>
+      <div className="grid grid-cols-2 gap-3">
+        {GAME_COLORS.map((color, c) => (
+          <button
+            key={c}
+            type="button"
+            onClick={() => tap(c)}
+            disabled={stage !== 'input'}
+            aria-label={`${c + 1}`}
+            className={cx(
+              'h-24 rounded-xl transition duration-150 active:scale-95',
+              color,
+              (stage === 'input' || lit === c) ? 'opacity-100' : 'opacity-25',
+              lit === c && 'scale-105 ring-4 ring-zinc-900/20'
+            )}
+          />
+        ))}
+      </div>
+      {stage === 'ready' && <Button block onClick={show}>{t(lang, 'colorsShow')}</Button>}
+    </div>
+  );
+};
+
 const LanguageSwitcher = ({ lang, setLang }) => (
   <div className="flex rounded-lg border border-zinc-200 bg-zinc-50 p-0.5 text-xs font-semibold">
     {['en', 'ru'].map(code => (
@@ -648,7 +795,8 @@ const JoinForm = ({ onJoin, error, lang }) => {
   );
 };
 
-const BetForm = ({ player, onBet, error, lang }) => {
+// yesLabel / noLabel replace YES / NO, e.g. with the duellists' names.
+const BetForm = ({ player, onBet, error, lang, yesLabel, noLabel }) => {
   const [amount, setAmount] = useState('');
   if (!player) return null;
   const maxBet = Math.floor(player.money / 2);
@@ -695,8 +843,8 @@ const BetForm = ({ player, onBet, error, lang }) => {
         ))}
       </div>
       <div className="grid grid-cols-2 gap-2 pt-1">
-        <Button variant="success" disabled={!validAmount} onClick={() => onBet(true, parsed)}>{t(lang, 'yes')}</Button>
-        <Button variant="danger" disabled={!validAmount} onClick={() => onBet(false, parsed)}>{t(lang, 'no')}</Button>
+        <Button variant="success" disabled={!validAmount} onClick={() => onBet(true, parsed)}><span className="truncate">{yesLabel || t(lang, 'yes')}</span></Button>
+        <Button variant="danger" disabled={!validAmount} onClick={() => onBet(false, parsed)}><span className="truncate">{noLabel || t(lang, 'no')}</span></Button>
       </div>
       <p className="text-xs text-zinc-500">{t(lang, 'betRange', MIN_BET, maxBet)}</p>
       {error && <p className="text-sm text-rose-600">{error}</p>}
@@ -772,7 +920,8 @@ const BetYouCantGame = () => {
     { en: "Can the player cut the deck one-handed, moving the top half under the bottom, 3 times in a row without dropping a card or using the other hand? 3 tries.", ru: "Сможет ли игрок 3 раза подряд снять колоду одной рукой, переместив верхнюю половину под нижнюю, не уронив ни одной карты и не помогая второй рукой? 3 попытки.", time: null },
     { en: "Can the player stand an unbent card on its edge on the table with no support, so it stays up for 3 seconds after the hands come away? 3 tries.", ru: "Сможет ли игрок поставить несогнутую карту на ребро на столе без опоры так, чтобы она простояла 3 секунды после того, как игрок убрал руки? 3 попытки.", time: null },
     { en: "Standing in one spot, can the player throw 5 cards one at a time so that each lands within a meter of the previous one?", ru: "Сможет ли игрок, не сходя с места, по очереди бросить 5 карт так, чтобы каждая легла не дальше метра от предыдущей?", time: null },
-    { en: "A full deck rests on the back of the player's hand. Can they drop the hand away, leaving the deck in the air, and catch the whole deck with that same hand without dropping a card? No help from the other hand. 3 tries.", ru: "Полная колода лежит стопкой на тыльной стороне ладони. Сможет ли игрок резко убрать руку вниз, оставив колоду в воздухе, и поймать её той же рукой, не уронив ни одной карты? Помогать второй рукой нельзя. 3 попытки.", time: null }
+    { en: "A full deck rests on the back of the player's hand. Can they drop the hand away, leaving the deck in the air, and catch the whole deck with that same hand without dropping a card? No help from the other hand. 3 tries.", ru: "Полная колода лежит стопкой на тыльной стороне ладони. Сможет ли игрок резко убрать руку вниз, оставив колоду в воздухе, и поймать её той же рукой, не уронив ни одной карты? Помогать второй рукой нельзя. 3 попытки.", time: null },
+    { en: "Can the player stop a hidden stopwatch at exactly 10 seconds? The phone measures; up to 0.3 s off either way counts. 1 try.", ru: "Сможет ли игрок остановить скрытый секундомер ровно на 10 секундах? Замеряет телефон, ошибка до 0,3 с в любую сторону засчитывается. 1 попытка.", time: null, game: 'tenSeconds' }
   ];
 
   const mentalTasks = [
@@ -842,7 +991,30 @@ const BetYouCantGame = () => {
     { en: "Can the player name 3 professional sports teams in 20 seconds? No hints, no repeats.", ru: "Сможет ли игрок за 20 секунд назвать 3 профессиональные спортивные команды? Без подсказок, без повторов.", time: 20 },
     { en: "Can the player name two countries whose flags share no color at all? The other players check the flags.", ru: "Сможет ли игрок назвать две страны, флаги которых не имеют ни одного общего цвета? Остальные игроки проверяют флаги.", time: 30 },
     { en: "Can the player name all 7 months that have exactly 31 days, without naming a wrong one?", ru: "Сможет ли игрок назвать все 7 месяцев, в которых ровно 31 день, не назвав ни одного лишнего?", time: 30 },
-    { en: "Can the player name 8 different pieces of furniture in 30 seconds? No hints, no repeats.", ru: "Сможет ли игрок за 30 секунд назвать 8 разных предметов мебели? Без подсказок, без повторов.", time: 30 }
+    { en: "Can the player name 8 different pieces of furniture in 30 seconds? No hints, no repeats.", ru: "Сможет ли игрок за 30 секунд назвать 8 разных предметов мебели? Без подсказок, без повторов.", time: 30 },
+    { en: "Can the player repeat a sequence of 7 colors after watching it once on their phone? One wrong tap ends the attempt. 1 try.", ru: "Сможет ли игрок повторить последовательность из 7 цветов, один раз посмотрев её на телефоне? Одно неверное нажатие — попытка окончена. 1 попытка.", time: null, game: 'colors' }
+  ];
+
+  // Duels: the performer picks an opponent, and the others bet on who wins.
+  const duelTasks = [
+    { en: "Who holds a plank longer? Start together; the first whose knees touch the floor loses.", ru: "Кто дольше простоит в планке? Начинаете вместе; чьи колени первыми коснутся пола — тот проиграл.", time: null },
+    { en: "Staring contest: the first to blink or look away loses.", ru: "Гляделки: кто первым моргнёт или отведёт взгляд — проиграл.", time: null },
+    { en: "Thumb wrestling, first to 2 wins.", ru: "Борьба большими пальцами до двух побед.", time: null },
+    { en: "Rock-paper-scissors, first to 3 wins.", ru: "Камень-ножницы-бумага до трёх побед.", time: null },
+    { en: "Take turns naming countries, no repeats. Whoever can't answer within 5 seconds loses. The player whose turn it is starts.", ru: "По очереди называйте страны без повторов. Кто не ответит за 5 секунд — проиграл. Начинает тот, чей ход.", time: null },
+    { en: "Take turns naming car brands, no repeats. Whoever can't answer within 5 seconds loses. The player whose turn it is starts.", ru: "По очереди называйте марки машин без повторов. Кто не ответит за 5 секунд — проиграл. Начинает тот, чей ход.", time: null },
+    { en: "Take turns naming animals, each starting with the last letter of the previous one. 5 seconds to answer, no repeats. The player whose turn it is starts.", ru: "По очереди называйте животных: каждое на последнюю букву предыдущего (если это Ь, Ъ или Ы — на предпоследнюю). 5 секунд на ответ, без повторов. Начинает тот, чей ход.", time: null },
+    { en: "Who stands longer on one leg with their eyes closed? Putting the other foot down or opening the eyes loses.", ru: "Кто дольше простоит на одной ноге с закрытыми глазами? Опустил вторую ногу или открыл глаза — проиграл.", time: null },
+    { en: "Who does more squats in 30 seconds? The others count, one counter for each.", ru: "Кто сделает больше приседаний за 30 секунд? Остальные считают, у каждого свой счётчик.", time: 30 },
+    { en: "The others try to make you both laugh without touching you. The first to smile loses.", ru: "Остальные пытаются рассмешить вас обоих, не касаясь. Кто первым улыбнётся — проиграл.", time: null },
+    { en: "From 3 meters, each throws a coin toward a wall, one throw each. The coin that stops closest to the wall wins; one that touches the wall loses.", ru: "С 3 метров каждый бросает монету к стене, по одному броску. Побеждает монета, остановившаяся ближе к стене; коснувшаяся стены проигрывает.", time: null },
+    { en: "Who holds a wall-sit longer? Back flat against the wall, thighs parallel to the floor, hands off the legs.", ru: "Кто дольше просидит на «стуле» у стены? Спина прижата к стене, бёдра параллельны полу, руки не опираются на ноги.", time: null },
+    { en: "Take turns flipping a bottle about a third full of water, 5 flips each. More upright landings wins; if tied, keep going one flip each until someone misses.", ru: "По очереди подбрасывайте бутылку, заполненную водой на треть, по 5 бросков. Больше приземлений стоя — победа; при равенстве бросайте по одному, пока кто-то не промахнётся.", time: null },
+    { en: "From 3 meters, take turns throwing a crumpled paper ball into a bin or bowl, 5 throws each. More hits wins; if tied, keep going one throw each.", ru: "С 3 метров по очереди бросайте бумажный комок в ведро или миску, по 5 бросков. Больше попаданий — победа; при равенстве бросайте по одному.", time: null },
+    { en: "Who builds a taller house of cards in 60 seconds? It has to stand on its own when time is up.", ru: "Кто за 60 секунд построит более высокий карточный домик? Когда время выйдет, он должен стоять сам.", time: 60 },
+    { en: "Arm wrestling, first to 2 wins.", ru: "Армрестлинг до двух побед.", time: null },
+    { en: "Who claps more times in 15 seconds? The others count, one counter for each.", ru: "Кто больше раз хлопнет в ладоши за 15 секунд? Остальные считают, у каждого свой счётчик.", time: 15 },
+    { en: "Take turns saying 'She sells seashells by the seashore' 3 times fast. A stumble is a miss; whoever misses while the other doesn't loses the round. First to 2 rounds.", ru: "По очереди произнесите «Шла Саша по шоссе и сосала сушку» 3 раза быстро. Запнулся — промах; кто промахнулся, а соперник нет, проиграл раунд. До двух побед.", time: null }
   ];
 
   // ---- Connection / game identity ----
@@ -1142,7 +1314,7 @@ const BetYouCantGame = () => {
       return { text: t(lang, 'musicTaskText'), time: SONG_SECONDS, type: 'music' };
     }
     if (!state || !state.currentTaskType || state.currentTaskIndex == null) return null;
-    const list = state.currentTaskType === 'skill' ? skillTasks : mentalTasks;
+    const list = { skill: skillTasks, mental: mentalTasks, duel: duelTasks }[state.currentTaskType];
     const entry = list[state.currentTaskIndex];
     return { ...entry, text: entry[lang], type: state.currentTaskType };
   };
@@ -1193,7 +1365,8 @@ const BetYouCantGame = () => {
     if (result.error) setBetError(result.error);
   };
 
-  const recordResult = (success) => post('/result', { success });
+  const recordResult = (success, detail) => post('/result', { success, detail });
+  const chooseOpponent = (player) => post('/duelOpponent', { playerId: player.id, name: player.name });
   const nextTurn = () => post('/nextTurn');
   const endGame = () => post('/end');
 
@@ -1414,10 +1587,15 @@ const BetYouCantGame = () => {
       )
     : null;
   const iAmCurrent = myPlayerId === gs.currentPlayerIndex;
-  const otherPlayers = gs.players.filter((_, i) => i !== gs.currentPlayerIndex);
+  // In a duel the opponent doesn't bet, and a bet on success is a bet on
+  // the performer winning.
+  const opponent = gs.duelOpponent != null ? gs.players[gs.duelOpponent] : null;
+  const otherPlayers = gs.players.filter((_, i) => i !== gs.currentPlayerIndex && i !== gs.duelOpponent);
+  const outcomeLabel = (willSucceed) =>
+    opponent ? (willSucceed ? currentPlayer.name : opponent.name) : t(lang, willSucceed ? 'success' : 'fail');
   const betsCount = gs.betsCount || 0;
   const betPlacedBy = gs.betPlacedBy || [];
-  const betsNeeded = gs.players.length - 1;
+  const betsNeeded = otherPlayers.length;
   const myBet = myPlayerId !== null ? (gs.bets || {})[myPlayerId] : undefined;
   const waitingContinue = !iAmCurrent && <Hint>{t(lang, 'waitingContinue', currentPlayer.name)}</Hint>;
   const typeLabel = (type) => t(lang, `${type}Challenge`);
@@ -1466,6 +1644,30 @@ const BetYouCantGame = () => {
         {waitingContinue}
       </Panel>
     );
+  } else if (gs.phase === 'duelPick' && currentTask) {
+    phaseView = (
+      <Panel
+        eyebrow={typeLabel('duel')}
+        title={iAmCurrent ? t(lang, 'chooseOpponent') : t(lang, 'choosingOpponent', currentPlayer.name)}
+      >
+        <TaskCard text={currentTask.text} meta={taskTimeText(currentTask)} />
+        <div className="mt-6 grid gap-2 sm:grid-cols-2">
+          {gs.players.filter(p => p.id !== gs.currentPlayerIndex).map(p => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => chooseOpponent(p)}
+              disabled={!iAmCurrent}
+              className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-3 text-left transition-colors hover:border-indigo-500 hover:bg-indigo-50/40 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-zinc-200 disabled:hover:bg-white"
+            >
+              <Avatar name={p.name} />
+              <span className="min-w-0 flex-1 truncate font-medium">{p.name}</span>
+              <span className="text-sm tabular-nums text-zinc-500">€{p.money}</span>
+            </button>
+          ))}
+        </div>
+      </Panel>
+    );
   } else if (gs.phase === 'betting' || gs.phase === 'blindBetting') {
     const isBlind = gs.phase === 'blindBetting';
     phaseView = (
@@ -1473,7 +1675,7 @@ const BetYouCantGame = () => {
         eyebrow={isBlind ? t(lang, 'blindBettingTitle') : typeLabel(gs.currentTaskType)}
         title={isBlind
           ? `${currentPlayer.name} ${t(lang, 'hasChosen')} ${t(lang, `${gs.blindBetTaskType}ChallengeLower`)}`
-          : null}
+          : opponent ? t(lang, 'duelVs', currentPlayer.name, opponent.name) : null}
       >
         {isBlind
           ? <Notice tone="warning" className="mb-6">{t(lang, 'blindBettingWarning')}</Notice>
@@ -1481,6 +1683,7 @@ const BetYouCantGame = () => {
             ? <div className="mb-6 space-y-3">
                 <TaskCard text={currentTask.text} meta={taskTimeText(currentTask)} />
                 <SongCard track={gs.track} lang={lang} />
+                {opponent && <p className="text-sm text-zinc-500">{t(lang, 'duelBetHint')}</p>}
               </div>
             : <div className="mb-6"><TaskCard muted text={t(lang, 'taskHiddenUntilBets')} /></div>}
 
@@ -1488,12 +1691,21 @@ const BetYouCantGame = () => {
           <div>
             {iAmCurrent ? (
               <Notice tone="accent">{t(lang, 'waitingOnBets', betsCount, betsNeeded)}</Notice>
-            ) : myPlayerId === null ? null : myBet ? (
+            ) : myPlayerId === null ? null : myPlayerId === gs.duelOpponent ? (
+              <Notice tone="accent">{t(lang, 'duelistNoBet')}</Notice>
+            ) : myBet ? (
               <Notice tone="success">
-                {t(lang, 'youBet', myBet.amount, myBet.willSucceed ? t(lang, 'success') : t(lang, 'fail'))}
+                {t(lang, 'youBet', myBet.amount, outcomeLabel(myBet.willSucceed))}
               </Notice>
             ) : (
-              <BetForm player={gs.players[myPlayerId]} onBet={placeBet} error={betError} lang={lang} />
+              <BetForm
+                player={gs.players[myPlayerId]}
+                onBet={placeBet}
+                error={betError}
+                lang={lang}
+                yesLabel={opponent ? currentPlayer.name : undefined}
+                noLabel={opponent ? opponent.name : undefined}
+              />
             )}
           </div>
           <div>
@@ -1535,10 +1747,13 @@ const BetYouCantGame = () => {
     const total = currentTask.time || 0;
     const progress = total && challengeTimeLeft !== null ? Math.min(100, (challengeTimeLeft / total) * 100) : 0;
     const isSong = currentTask.type === 'music';
+    const game = currentTask.game;
     phaseView = (
       <Panel
         eyebrow={typeLabel(currentTask.type)}
-        title={iAmCurrent ? t(lang, 'youPerforming') : t(lang, 'otherPerforming', currentPlayer.name)}
+        title={opponent
+          ? t(lang, 'duelVs', currentPlayer.name, opponent.name)
+          : iAmCurrent ? t(lang, 'youPerforming') : t(lang, 'otherPerforming', currentPlayer.name)}
       >
         <div className="space-y-3">
           <TaskCard text={currentTask.text} />
@@ -1563,7 +1778,21 @@ const BetYouCantGame = () => {
           </div>
         )}
 
-        {!gs.showResults && (
+        {game && !gs.showResults && (
+          <div className="mt-6">
+            {iAmCurrent ? (
+              <>
+                {game === 'tenSeconds' && <TenSecondsGame key={gs.currentTaskIndex} lang={lang} onDone={recordResult} />}
+                {game === 'colors' && <ColorsGame key={gs.currentTaskIndex} lang={lang} onDone={recordResult} />}
+                <p className="mt-3 text-xs text-zinc-400">{t(lang, 'playOnPhone')}</p>
+              </>
+            ) : (
+              <Notice tone="accent">{t(lang, 'playingOnPhone', currentPlayer.name)}</Notice>
+            )}
+          </div>
+        )}
+
+        {!game && !gs.showResults && (
           <div className="mt-6">
             {challengeTimeLeft !== null ? (
               <div>
@@ -1581,9 +1810,18 @@ const BetYouCantGame = () => {
         )}
 
         {/* The performer judges a song only once they can see what it was. */}
-        {!gs.showResults && !(iAmCurrent && isSong && !songVisibleToMe) && (
+        {!game && !gs.showResults && !(iAmCurrent && isSong && !songVisibleToMe) && (
           <div className="mt-6 border-t border-zinc-100 pt-6">
-            {iAmCurrent ? (
+            {iAmCurrent && opponent ? (
+              <>
+                <p className="font-semibold">{t(lang, 'whoWon')}</p>
+                <p className="mt-1 text-sm text-zinc-500">{t(lang, 'onlyYouJudge')} {t(lang, 'duelTie')}</p>
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  <Button variant="secondary" onClick={() => recordResult(true)}><span className="truncate">{currentPlayer.name}</span></Button>
+                  <Button variant="secondary" onClick={() => recordResult(false)}><span className="truncate">{opponent.name}</span></Button>
+                </div>
+              </>
+            ) : iAmCurrent ? (
               <>
                 <p className="font-semibold">{t(lang, 'didYouSucceed')}</p>
                 <p className="mt-1 text-sm text-zinc-500">{t(lang, 'onlyYouJudge')}</p>
@@ -1602,10 +1840,17 @@ const BetYouCantGame = () => {
           <div className="mt-6 border-t border-zinc-100 pt-6">
             <div className="mb-3 flex items-center justify-between gap-3">
               <h3 className="font-semibold">{t(lang, 'resultsTitle')}</h3>
-              <Badge tone={gs.taskSuccess ? 'success' : 'danger'}>
-                {gs.taskSuccess ? t(lang, 'taskCompleted') : t(lang, 'taskFailed')}
-              </Badge>
+              {opponent ? (
+                <Badge tone="accent">{t(lang, 'duelWinner', gs.taskSuccess ? currentPlayer.name : opponent.name)}</Badge>
+              ) : (
+                <Badge tone={gs.taskSuccess ? 'success' : 'danger'}>
+                  {gs.taskSuccess ? t(lang, 'taskCompleted') : t(lang, 'taskFailed')}
+                </Badge>
+              )}
             </div>
+            {gameDetailText(game, gs.resultDetail, lang) && (
+              <p className="mb-3 text-sm font-medium text-zinc-700">{gameDetailText(game, gs.resultDetail, lang)}</p>
+            )}
             {Object.keys(gs.bets || {}).length > 0 && (
               <ul className="divide-y divide-zinc-100 rounded-xl border border-zinc-200">
                 {Object.entries(gs.bets || {}).map(([playerId, bet]) => {

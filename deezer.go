@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 )
@@ -146,26 +147,74 @@ func musicAvailable() bool {
 	return len(tracks) > 0
 }
 
-// pickTrack deals a song this game hasn't heard yet, starting over once
-// every track has been played. Callers check musicAvailable first.
-func (g *Game) pickTrack() *Track {
+// played holds the Deezer ids of every song dealt on this server, across
+// all games, so a song doesn't come back until the whole list has been
+// heard. It is saved to playedTracksFile, so a restart doesn't forget it.
+// Guarded by tracksMu.
+var played = map[int64]bool{}
+
+// playedTracksFile is set at startup to a file next to the binary.
+var playedTracksFile string
+
+func loadPlayedTracks() {
+	exe, err := os.Executable()
+	if err != nil {
+		exe = "betgame"
+	}
+	playedTracksFile = filepath.Join(filepath.Dir(exe), "played_tracks.json")
+	data, err := os.ReadFile(playedTracksFile)
+	if err != nil {
+		return
+	}
+	var ids []int64
+	if err := json.Unmarshal(data, &ids); err != nil {
+		log.Printf("Не удалось прочитать %s: %v", playedTracksFile, err)
+		return
+	}
+	for _, id := range ids {
+		played[id] = true
+	}
+}
+
+// savePlayedTracks writes the played set to a temporary file and renames
+// it into place, so a crash mid-write can't leave a broken file.
+func savePlayedTracks() {
+	ids := make([]int64, 0, len(played))
+	for id := range played {
+		ids = append(ids, id)
+	}
+	data, _ := json.Marshal(ids)
+	tmp := playedTracksFile + ".tmp"
+	if err := os.WriteFile(tmp, data, 0o644); err != nil {
+		log.Printf("Не удалось сохранить сыгранные песни: %v", err)
+		return
+	}
+	if err := os.Rename(tmp, playedTracksFile); err != nil {
+		log.Printf("Не удалось сохранить сыгранные песни: %v", err)
+	}
+}
+
+// pickTrack deals a song nobody on this server has heard yet. Once every
+// song in the current list has been played, the list starts over. Callers
+// check musicAvailable first.
+func pickTrack() *Track {
 	tracksMu.Lock()
 	defer tracksMu.Unlock()
-	if g.usedTracks == nil {
-		g.usedTracks = map[int64]bool{}
-	}
 	available := make([]Track, 0, len(tracks))
 	for _, t := range tracks {
-		if !g.usedTracks[t.ID] {
+		if !played[t.ID] {
 			available = append(available, t)
 		}
 	}
 	if len(available) == 0 {
-		g.usedTracks = map[int64]bool{}
+		for _, t := range tracks {
+			delete(played, t.ID)
+		}
 		available = tracks
 	}
 	t := available[mrand.Intn(len(available))]
-	g.usedTracks[t.ID] = true
+	played[t.ID] = true
+	savePlayedTracks()
 	return &t
 }
 

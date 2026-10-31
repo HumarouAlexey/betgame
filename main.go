@@ -23,11 +23,12 @@ import (
 //go:embed web/*
 var webFS embed.FS
 
-// These must match the length of skillTasks / mentalTasks in web/index.html.
-// If you add or remove tasks there, update these two numbers to match.
+// These must match the length of skillTasks / mentalTasks / duelTasks in
+// web/index.html. If you add or remove tasks there, update these to match.
 const (
-	skillTaskCount  = 67
-	mentalTaskCount = 67
+	skillTaskCount  = 68
+	mentalTaskCount = 68
+	duelTaskCount   = 18
 	minBetAmount    = 5
 	startingMoney   = 100
 	// A player whose money drops to rescueThreshold or below after a
@@ -37,6 +38,9 @@ const (
 	rescueThreshold = 10
 	rescueAmount    = 100
 	maxNameLength   = 24
+	// maxResultDetail caps what a phone mini-game reports with its result
+	// (e.g. "10.27" seconds or "5/7" colours).
+	maxResultDetail = 16
 )
 
 type Player struct {
@@ -67,6 +71,7 @@ type GameState struct {
 	Rescued         []int  `json:"rescued"`
 	UsedSkillTasks  []int  `json:"usedSkillTasks"`
 	UsedMentalTasks []int  `json:"usedMentalTasks"`
+	UsedDuelTasks   []int  `json:"usedDuelTasks"`
 	PerformEndsAt   *int64 `json:"performEndsAt"`
 	// Track is the song in a song challenge. The performer gets an empty
 	// one until they've answered (see sanitizeState).
@@ -75,10 +80,16 @@ type GameState struct {
 	SongRevealed bool `json:"songRevealed"`
 	// MusicAvailable says whether song challenges can be dealt right now
 	// (the server needs to reach Deezer).
-	MusicAvailable bool  `json:"musicAvailable"`
-	BetsCount      int   `json:"betsCount"`
-	BetPlacedBy    []int `json:"betPlacedBy"`
-	You            *int  `json:"you"`
+	MusicAvailable bool `json:"musicAvailable"`
+	// DuelOpponent is the player the performer challenged in a duel. In a
+	// duel, a bet on success is a bet on the performer winning.
+	DuelOpponent *int `json:"duelOpponent"`
+	// ResultDetail is what a phone mini-game measured, shown with the
+	// results.
+	ResultDetail string `json:"resultDetail"`
+	BetsCount    int    `json:"betsCount"`
+	BetPlacedBy  []int  `json:"betPlacedBy"`
+	You          *int   `json:"you"`
 	// ServerNow is the server's clock at the moment of the response, so
 	// clients can run countdowns against server time rather than their own
 	// (possibly skewed) clocks.
@@ -97,24 +108,21 @@ type Game struct {
 	// shuffled bag (see drawTaskType); lastType is the one dealt most recently.
 	typeBag  []string
 	lastType string
-	// usedTracks holds the Deezer ids of the songs already played.
-	usedTracks map[int64]bool
 }
 
 // taskTypeBag is one round of challenge types. Dealing from a shuffled bag
-// instead of rolling for each turn keeps the four types evenly mixed: no
+// instead of rolling for each turn keeps the five types evenly mixed: no
 // type comes up more than twice in a row, and a blind bet is never more
-// than twelve challenges away.
-var taskTypeBag = []string{"skill", "skill", "mental", "mental", "music", "music", "blind", "blind"}
+// than sixteen challenges away.
+var taskTypeBag = []string{"skill", "skill", "mental", "mental", "music", "music", "duel", "duel", "blind", "blind"}
 
 // drawTaskType deals the next challenge type, refilling and reshuffling the
 // bag when it runs out. A fresh bag never opens with the type the previous
-// one ended on, so a streak can't straddle two bags. Song challenges are
-// skipped while the server can't reach Deezer.
-func (g *Game) drawTaskType(musicOK bool) string {
+// one ended on, so a streak can't straddle two bags. Types in skip (song
+// challenges without Deezer, duels with nobody to challenge) are passed over.
+func (g *Game) drawTaskType(skip map[string]bool) string {
 	for {
-		t := g.drawFromBag()
-		if t != "music" || musicOK {
+		if t := g.drawFromBag(); !skip[t] {
 			return t
 		}
 	}
@@ -322,6 +330,8 @@ var errMessages = map[string]errMsg{
 	"playerChanged":      {"the player list has changed, try again", "список игроков изменился, попробуйте ещё раз"},
 	"musicUnavailable":   {"song challenges need the server to reach Deezer", "для заданий с песнями серверу нужен доступ к Deezer"},
 	"noSong":             {"there is no song in play", "сейчас песня не играет"},
+	"duelistNoBet":       {"you're in the duel, so you can't bet on it", "ты участвуешь в дуэли, поэтому не можешь на неё ставить"},
+	"invalidOpponent":    {"choose another player as your opponent", "выберите соперником другого игрока"},
 }
 
 // writeErrKey writes an error message in the language requested via ?lang=ru
@@ -364,6 +374,7 @@ func handleCreateGame(w http.ResponseWriter, r *http.Request) {
 		Bets:             map[int]Bet{},
 		UsedSkillTasks:   []int{},
 		UsedMentalTasks:  []int{},
+		UsedDuelTasks:    []int{},
 	}
 
 	gamesMu.Lock()
@@ -509,7 +520,8 @@ func handleRoll(w http.ResponseWriter, r *http.Request, id string) {
 	// The roll moves the player (and pays out for passing START); which
 	// kind of challenge they get comes from the shuffled bag, not the square.
 	g.state.DiceValue = &roll
-	switch t := g.drawTaskType(musicAvailable()); t {
+	skip := map[string]bool{"music": !musicAvailable(), "duel": len(g.state.Players) < 2}
+	switch t := g.drawTaskType(skip); t {
 	case "skill":
 		idx, used := pickUnused(skillTaskCount, g.state.UsedSkillTasks)
 		g.state.UsedSkillTasks = used
@@ -524,8 +536,16 @@ func handleRoll(w http.ResponseWriter, r *http.Request, id string) {
 		g.state.Phase = "betting"
 	case "music":
 		g.state.CurrentTaskType = &t
-		g.state.Track = g.pickTrack()
+		g.state.Track = pickTrack()
 		g.state.Phase = "betting"
+	case "duel":
+		// The duel is dealt first, so the performer picks an opponent
+		// knowing what they'll compete at.
+		idx, used := pickUnused(duelTaskCount, g.state.UsedDuelTasks)
+		g.state.UsedDuelTasks = used
+		g.state.CurrentTaskType = &t
+		g.state.CurrentTaskIndex = &idx
+		g.state.Phase = "duelPick"
 	default:
 		g.state.Phase = "blindBet"
 	}
@@ -589,10 +609,52 @@ func handleReveal(w http.ResponseWriter, r *http.Request, id string) {
 		idx, g.state.UsedMentalTasks = pickUnused(mentalTaskCount, g.state.UsedMentalTasks)
 		g.state.CurrentTaskIndex = &idx
 	case "music":
-		g.state.Track = g.pickTrack()
+		g.state.Track = pickTrack()
 	}
 	g.state.CurrentTaskType = &t
 	g.state.Phase = "revealBlindTask"
+	respondState(w, r, g)
+}
+
+type duelOpponentReq struct {
+	// PlayerID and Name pick the opponent; the name guards against the list
+	// having shifted since the performer looked at it.
+	PlayerID int    `json:"playerId"`
+	Name     string `json:"name"`
+}
+
+func handleDuelOpponent(w http.ResponseWriter, r *http.Request, id string) {
+	g, ok := getGame(id)
+	if !ok {
+		writeErrKey(w, r, 404, "gameNotFound")
+		return
+	}
+	var req duelOpponentReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeErrKey(w, r, 400, "badRequest")
+		return
+	}
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if !requireCurrentPlayer(w, r, g) {
+		return
+	}
+	if g.state.Phase != "duelPick" {
+		respondState(w, r, g)
+		return
+	}
+	if req.PlayerID < 0 || req.PlayerID >= len(g.state.Players) || req.PlayerID == g.state.CurrentPlayerIdx {
+		writeErrKey(w, r, 400, "invalidOpponent")
+		return
+	}
+	if g.state.Players[req.PlayerID].Name != req.Name {
+		writeErrKey(w, r, 409, "playerChanged")
+		return
+	}
+	opp := req.PlayerID
+	g.state.DuelOpponent = &opp
+	g.state.Bets = map[int]Bet{}
+	g.state.Phase = "betting"
 	respondState(w, r, g)
 }
 
@@ -665,6 +727,10 @@ func handleBet(w http.ResponseWriter, r *http.Request, id string) {
 		writeErrKey(w, r, 400, "currentPlayerNoBet")
 		return
 	}
+	if g.state.DuelOpponent != nil && playerID == *g.state.DuelOpponent {
+		writeErrKey(w, r, 400, "duelistNoBet")
+		return
+	}
 	player := g.state.Players[playerID]
 	if req.Amount < minBetAmount {
 		writeErr(w, 400, minBetMsg(r.URL.Query().Get("lang")))
@@ -679,7 +745,10 @@ func handleBet(w http.ResponseWriter, r *http.Request, id string) {
 }
 
 type resultReq struct {
+	// Success means the performer did it, or in a duel, won it.
 	Success bool `json:"success"`
+	// Detail is what a phone mini-game measured, if anything.
+	Detail string `json:"detail"`
 }
 
 func handleResult(w http.ResponseWriter, r *http.Request, id string) {
@@ -711,9 +780,18 @@ func handleResult(w http.ResponseWriter, r *http.Request, id string) {
 			p.Money -= bet.Amount
 		}
 	}
+	// The pot goes to whoever came out on top: the performer, or the
+	// opponent who beat them in a duel.
 	if req.Success {
 		g.state.Players[g.state.CurrentPlayerIdx].Money += total
+	} else if g.state.DuelOpponent != nil {
+		g.state.Players[*g.state.DuelOpponent].Money += total
 	}
+	detail := strings.TrimSpace(req.Detail)
+	if utf8.RuneCountInString(detail) > maxResultDetail {
+		detail = string([]rune(detail)[:maxResultDetail])
+	}
+	g.state.ResultDetail = detail
 	g.state.Rescued = []int{}
 	for i := range g.state.Players {
 		if g.state.Players[i].Money <= rescueThreshold {
@@ -758,6 +836,8 @@ func (g *Game) startTurn(idx int) {
 	g.state.PerformEndsAt = nil
 	g.state.Track = nil
 	g.state.SongRevealed = false
+	g.state.DuelOpponent = nil
+	g.state.ResultDetail = ""
 }
 
 // removePlayer takes player k out of the game. Players are addressed by
@@ -795,6 +875,21 @@ func (g *Game) removePlayer(k int) {
 		s.Rescued = rescued
 	}
 
+	// Losing the opponent sends the performer back to pick another one.
+	if s.DuelOpponent != nil {
+		if *s.DuelOpponent == k {
+			s.DuelOpponent = nil
+			s.Bets = map[int]Bet{}
+			if s.Phase == "betting" || s.Phase == "performing" {
+				s.Phase = "duelPick"
+				s.PerformEndsAt = nil
+			}
+		} else {
+			opp := shift(*s.DuelOpponent)
+			s.DuelOpponent = &opp
+		}
+	}
+
 	switch {
 	case len(s.Players) == 0:
 		s.CurrentPlayerIdx = 0
@@ -807,6 +902,10 @@ func (g *Game) removePlayer(k int) {
 		g.startTurn(k % len(s.Players))
 	case k < s.CurrentPlayerIdx:
 		s.CurrentPlayerIdx--
+	}
+	// A duel with nobody left to challenge is called off.
+	if s.Phase == "duelPick" && len(s.Players) < 2 {
+		g.startTurn(s.CurrentPlayerIdx)
 	}
 }
 
@@ -909,6 +1008,8 @@ func apiHandler(w http.ResponseWriter, r *http.Request) {
 		handleBlindType(w, r, id)
 	case action == "reveal" && r.Method == http.MethodPost:
 		handleReveal(w, r, id)
+	case action == "duelOpponent" && r.Method == http.MethodPost:
+		handleDuelOpponent(w, r, id)
 	case action == "startChallenge" && r.Method == http.MethodPost:
 		handleStartChallenge(w, r, id)
 	case action == "bet" && r.Method == http.MethodPost:
@@ -961,6 +1062,7 @@ func main() {
 		log.Fatal("не найдены встроенные файлы web/: ", err)
 	}
 
+	loadPlayedTracks()
 	go keepTracksFresh()
 
 	mux := http.NewServeMux()

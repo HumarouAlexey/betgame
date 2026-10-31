@@ -58,8 +58,29 @@ the playlist's link):
 
     BETGAME_DEEZER_PLAYLIST=1234567890 ./betgame
 
+A song doesn't come back, in any game on this server, until every song in
+the list has been played. The played songs are remembered in
+`played_tracks.json` next to the binary, so a restart doesn't forget them;
+delete that file to start over.
+
 The server needs internet access for this. Without it the game works as
 before and simply deals no song challenges.
+
+## Duels
+
+In a duel the performer sees the task, then picks another player as their
+opponent. Everyone else bets on who will win (the opponent doesn't bet).
+The performer records the winner, and the winner takes the pot that
+would otherwise go to a successful performer. Duels need at least two
+players.
+
+## Phone mini-games
+
+Two challenges are played on the performer's phone, which also judges
+the result, so nobody has to record it: "exactly 10 seconds" (a skill
+task: stop a hidden stopwatch within 0.3 s of ten seconds) and "remember
+the colors" (a mental task: repeat a sequence of 7 colors). What the phone
+measured is shown with the results.
 
 ## Playing over the internet instead of local WiFi
 
@@ -74,9 +95,10 @@ address instead. The code doesn't change — only where you run the binary.
   Fine for a one-off game night; if you want it to survive restarts later,
   the natural next step is swapping the in-memory map in main.go for a
   small file or SQLite-backed store.
-- `skillTaskCount` / `mentalTaskCount` constants in main.go must match the
-  length of the `skillTasks` / `mentalTasks` arrays in web/index.html. If
-  you add or remove challenges there, update the two constants here too.
+- `skillTaskCount` / `mentalTaskCount` / `duelTaskCount` constants in
+  main.go must match the length of the `skillTasks` / `mentalTasks` /
+  `duelTasks` arrays in web/index.html. If you add or remove challenges
+  there, update the constants here too.
 - Only the current player's phone can roll the dice, start/reveal a
   challenge, record whether it succeeded, end the game early, and advance
   to the next turn — the buttons are disabled or hidden on everyone
@@ -87,9 +109,9 @@ address instead. The code doesn't change — only where you run the binary.
 - Mental tasks stay hidden from the player performing them until every
   other player has bet, so they can't get a head start on the puzzle.
 - The dice only move players (and pay €50 for passing START). The kind of
-  challenge — skill, mental, song or blind bet — is dealt from a shuffled
-  bag of eight (two of each), so no kind comes up more than twice in a row
-  and a blind bet is never more than twelve challenges away.
+  challenge — skill, mental, song, duel or blind bet — is dealt from a
+  shuffled bag of ten (two of each), so no kind comes up more than twice in
+  a row and a blind bet is never more than sixteen challenges away.
 - A player who ends a challenge with €10 or less (in practice €5–10, since
   a lost bet can't take anyone lower) is topped up with €100 by the bank,
   with a message on the results screen.
