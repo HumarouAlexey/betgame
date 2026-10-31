@@ -38,6 +38,9 @@ const (
 	rescueThreshold = 10
 	rescueAmount    = 100
 	maxNameLength   = 24
+	// A TV counts as connected while it has asked for the game within this
+	// many milliseconds; it asks every 1.5 s.
+	tvTimeoutMs = 5000
 	// maxResultDetail caps what a phone mini-game reports with its result
 	// (e.g. "10.27" seconds or "5/7" colours).
 	maxResultDetail = 16
@@ -94,6 +97,11 @@ type GameState struct {
 	// clients can run countdowns against server time rather than their own
 	// (possibly skewed) clocks.
 	ServerNow int64 `json:"serverNow"`
+	// TVConnected says a big screen is showing the game (see handleGetGame);
+	// song clips then play there instead of on the performer's phone.
+	TVConnected bool `json:"tvConnected"`
+	// tvSeenAt is when a TV last asked for the game.
+	tvSeenAt int64
 }
 
 type Game struct {
@@ -236,6 +244,7 @@ func sanitizeState(state GameState, viewerID *int) GameState {
 	out.You = viewerID
 	out.ServerNow = nowMs()
 	out.MusicAvailable = musicAvailable()
+	out.TVConnected = state.tvSeenAt > 0 && out.ServerNow-state.tvSeenAt < tvTimeoutMs
 
 	// The performer can't see which song it is until they've answered:
 	// they ask to see it, the clip runs out, or the results are in.
@@ -437,7 +446,26 @@ func handleGetGame(w http.ResponseWriter, r *http.Request, id string) {
 	}
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	if r.URL.Query().Get("tv") == "1" {
+		respondTV(w, g)
+		return
+	}
 	respondState(w, r, g)
+}
+
+// respondTV answers a big screen showing the game. It sees what the current
+// player sees, hidden song and all, since that player is looking at it too,
+// but it isn't anyone, so it can't act as them.
+func respondTV(w http.ResponseWriter, g *Game) {
+	g.state.tvSeenAt = nowMs()
+	var viewer *int
+	if len(g.state.Players) > 0 && g.state.Phase != "lobby" && g.state.Phase != "gameOver" {
+		cur := g.state.CurrentPlayerIdx
+		viewer = &cur
+	}
+	out := sanitizeState(g.state, viewer)
+	out.You = nil
+	writeJSON(w, out)
 }
 
 // handleStart lets any player who has joined start the game; onlookers who

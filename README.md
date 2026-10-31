@@ -74,6 +74,24 @@ delete that file to start over.
 The server needs internet access for this. Without it the game works as
 before and simply deals no song challenges.
 
+## TV mode
+
+To show the game on a big screen, open the game link in the TV's (or a
+laptop's) browser and tap **TV** in the header. That screen then shows
+what the current player sees, with the standings and the join QR code
+beside it. It can't do anything in the game: players still play on their
+phones. Anything hidden from the current player (the song, a mental task
+before the bets are in) stays hidden on the TV too, since they're looking
+at it.
+
+While a TV is showing the game, song clips play on the TV, once, instead
+of on the performer's phone. If the TV is switched off or closed, clips
+go back to the phone within a few seconds. Browsers only play sound after
+a tap on the page, which the TV switch counts as; if the TV was reloaded
+in TV mode, it shows a "Turn on the sound" button instead. Tap **TV**
+again to turn the mode off. The switch is only offered on devices that
+haven't joined as a player.
+
 ## Duels
 
 In a duel the performer sees the task, then picks another player as their

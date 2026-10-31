@@ -144,6 +144,12 @@ const STRINGS = {
     duelTie: 'A tie? Play it again.',
     duelWinner: (name) => `${name} wins`,
     playingOnPhone: (name) => `${name} is playing on their phone…`,
+    tvToggle: 'TV',
+    songHiddenTV: (name) => `The artist stays hidden until ${name} answers.`,
+    taskHiddenTV: 'The task appears once everyone has bet.',
+    tvToggleLabel: 'Show the game on a big screen',
+    songPlaysOnTV: 'The clip plays on the TV.',
+    tvEnableSound: 'Turn on the sound',
     playOnPhone: 'The phone keeps score: no need to record the result.',
     tenStart: 'Start',
     tenStop: 'Stop',
@@ -291,6 +297,12 @@ const STRINGS = {
     duelTie: 'Ничья? Переиграйте.',
     duelWinner: (name) => `Победил ${name}`,
     playingOnPhone: (name) => `${name} играет на своём телефоне…`,
+    tvToggle: 'ТВ',
+    songHiddenTV: (name) => `Исполнитель скрыт, пока ${name} не ответит.`,
+    taskHiddenTV: 'Задание откроется, когда все сделают ставки.',
+    tvToggleLabel: 'Показывать игру на большом экране',
+    songPlaysOnTV: 'Отрывок играет на ТВ.',
+    tvEnableSound: 'Включить звук',
     playOnPhone: 'Результат засчитает телефон, отмечать его не нужно.',
     tenStart: 'Старт',
     tenStop: 'Стоп',
@@ -524,10 +536,10 @@ const TaskCard = ({ text, meta, muted }) => (
 );
 
 // The song in a song challenge. The performer's copy has no title until
-// they've answered, so they see a placeholder instead.
-const SongCard = ({ track, lang }) => {
+// they've answered, so they (and the TV) see hiddenText instead.
+const SongCard = ({ track, lang, hiddenText }) => {
   if (!track) return null;
-  if (!track.title) return <TaskCard muted text={t(lang, 'songHidden')} />;
+  if (!track.title) return <TaskCard muted text={hiddenText || t(lang, 'songHidden')} />;
   return (
     <div className="flex items-center gap-4 rounded-xl border border-zinc-200 bg-white p-4">
       {track.cover && <img src={track.cover} alt="" width={64} height={64} className="h-16 w-16 shrink-0 rounded-lg object-cover" />}
@@ -640,6 +652,20 @@ const ColorsGame = ({ lang, onDone }) => {
       {stage === 'ready' && <Button block onClick={show}>{t(lang, 'colorsShow')}</Button>}
     </div>
   );
+};
+
+// A tenth of a second of silent WAV. Playing it from a tap is what lets a
+// browser start song clips later on its own, as the TV does.
+const silentWavUrl = () => {
+  const samples = 800;
+  const bytes = new Uint8Array(44 + samples).fill(128);
+  const view = new DataView(bytes.buffer);
+  const text = (at, str) => [...str].forEach((ch, i) => view.setUint8(at + i, ch.charCodeAt(0)));
+  text(0, 'RIFF'); view.setUint32(4, 36 + samples, true); text(8, 'WAVE');
+  text(12, 'fmt '); view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true);
+  view.setUint32(24, 8000, true); view.setUint32(28, 8000, true); view.setUint16(32, 1, true); view.setUint16(34, 8, true);
+  text(36, 'data'); view.setUint32(40, samples, true);
+  return URL.createObjectURL(new Blob([bytes], { type: 'audio/wav' }));
 };
 
 const LanguageSwitcher = ({ lang, setLang }) => (
@@ -1078,6 +1104,12 @@ const BetYouCantGame = () => {
     return (navigator.language || '').toLowerCase().startsWith('ru') ? 'ru' : 'en';
   });
 
+  // TV mode turns this device into a big screen: it shows what the current
+  // player sees, can't act for anyone, and plays the song clips.
+  const [tvMode, setTvMode] = useState(() => {
+    try { return localStorage.getItem('tv') === '1'; } catch (e) { return false; }
+  });
+
   useEffect(() => {
     try { localStorage.setItem('lang', lang); } catch (e) {}
     document.documentElement.lang = lang;
@@ -1158,7 +1190,7 @@ const BetYouCantGame = () => {
     let cancelled = false;
     const refresh = async () => {
       try {
-        const res = await fetch(`${apiBase()}/${gameId}${viewerQuery()}`);
+        const res = await fetch(`${apiBase()}/${gameId}${tvMode ? '?tv=1' : viewerQuery()}`);
         if (!res.ok) throw new Error('not found');
         const data = await res.json();
         if (!cancelled) {
@@ -1174,7 +1206,7 @@ const BetYouCantGame = () => {
     refresh();
     const interval = setInterval(refresh, 1500);
     return () => { cancelled = true; clearInterval(interval); };
-  }, [gameId, myToken, lang]);
+  }, [gameId, myToken, lang, tvMode]);
 
   // Mirrors the server-resolved player index (gs.you, derived from our
   // secret token) into local state so the rest of the UI can keep indexing
@@ -1321,25 +1353,47 @@ const BetYouCantGame = () => {
 
   // The clip plays only on the performer's phone. It starts straight from
   // the button press, since phones only allow sound after a tap.
+  // The same audio element is reused, so once a tap has unlocked it, it
+  // stays unlocked.
   const clipRef = React.useRef(null);
+  const clipElement = () => clipRef.current || (clipRef.current = new Audio());
   const [clipPlaying, setClipPlaying] = useState(false);
   const [clipError, setClipError] = useState(false);
   const stopClip = () => {
-    if (clipRef.current) {
-      clipRef.current.pause();
-      clipRef.current = null;
+    const audio = clipRef.current;
+    if (audio && audio.getAttribute('src')) {
+      audio.pause();
+      audio.removeAttribute('src');
+      audio.load();
     }
     setClipPlaying(false);
   };
   const playClip = () => {
+    const audio = clipElement();
     stopClip();
     setClipError(false);
-    const audio = new Audio(`${apiBase()}/${gameId}/songPreview?t=${Date.now()}`);
     audio.onended = () => setClipPlaying(false);
-    audio.onerror = () => { setClipPlaying(false); setClipError(true); };
-    clipRef.current = audio;
+    audio.onerror = () => {
+      if (!audio.getAttribute('src')) return;
+      setClipPlaying(false);
+      setClipError(true);
+    };
+    audio.src = `${apiBase()}/${gameId}/songPreview?t=${Date.now()}`;
     setClipPlaying(true);
     audio.play().catch(() => { setClipPlaying(false); setClipError(true); });
+  };
+  const unlockAudio = () => {
+    const audio = clipElement();
+    audio.src = silentWavUrl();
+    audio.play().then(() => stopClip()).catch(() => {});
+    getAudioCtx();
+  };
+  const toggleTv = () => {
+    const next = !tvMode;
+    if (next) unlockAudio(); else stopClip();
+    setClipError(false);
+    setTvMode(next);
+    try { localStorage.setItem('tv', next ? '1' : '0'); } catch (e) {}
   };
   const songVisibleToMe = !!(gs && gs.track && gs.track.title);
   // Stop as soon as the challenge is over or the performer sees the answer.
@@ -1349,11 +1403,21 @@ const BetYouCantGame = () => {
   }, [gs && gs.phase, songVisibleToMe]);
   useEffect(() => stopClip, []);
 
+  // On the TV a song clip starts by itself, once per challenge.
+  const tvClipRef = React.useRef(null);
+  useEffect(() => {
+    if (!tvMode || !gs || gs.phase !== 'performing' || gs.currentTaskType !== 'music' || songVisibleToMe || gs.showResults) return;
+    if (tvClipRef.current === gs.performEndsAt) return;
+    tvClipRef.current = gs.performEndsAt;
+    playClip();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tvMode, gs]);
+
   const revealSong = () => { stopClip(); return post('/revealSong'); };
 
   const startChallenge = () => {
     const task = currentTaskObject(gs);
-    if (task && task.type === 'music') playClip();
+    if (task && task.type === 'music' && !gs.tvConnected) playClip();
     if (task && !task.time) return post('/startChallenge', { noTimeLimit: true });
     return post('/startChallenge', { taskTimeSeconds: (task && task.time) || 30 });
   };
@@ -1444,8 +1508,19 @@ const BetYouCantGame = () => {
     );
   };
 
+  const tvToggle = (tvMode || myPlayerId === null) && (
+    <Button
+      variant={tvMode ? 'primary' : 'ghost'}
+      size="sm"
+      onClick={toggleTv}
+      aria-pressed={tvMode}
+      title={t(lang, 'tvToggleLabel')}
+    >
+      {t(lang, 'tvToggle')}
+    </Button>
+  );
   const shell = (children, actions, logoProps) => (
-    <AppShell lang={lang} setLang={setLang} actions={actions} {...logoProps}>{children}</AppShell>
+    <AppShell lang={lang} setLang={setLang} actions={<>{actions}{tvToggle}</>} {...logoProps}>{children}</AppShell>
   );
 
   if (apiError && !gs) {
@@ -1478,14 +1553,14 @@ const BetYouCantGame = () => {
             <Eyebrow>{t(lang, 'lobbyTitle')}</Eyebrow>
             <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">{t(lang, 'title')}</h1>
             <p className="mt-2 max-w-2xl text-zinc-600">{t(lang, 'lobbyIntro')}</p>
-            <div className="mt-6 max-w-md">
+            {!tvMode && <div className="mt-6 max-w-md">
               {isMe
                 ? <Notice tone="success">{t(lang, 'youAreIn', gs.players[myPlayerId].name)}</Notice>
                 : <>
                     {wasRemoved && <Notice tone="warning" className="mb-4">{t(lang, 'youWereRemoved')}</Notice>}
                     <JoinForm onJoin={joinGame} error={joinError} lang={lang} />
                   </>}
-            </div>
+            </div>}
           </Card>
 
           <Card>
@@ -1506,7 +1581,7 @@ const BetYouCantGame = () => {
                 ))}
               </ul>
             )}
-            <div className="border-t border-zinc-100 p-5 sm:p-6">
+            {!tvMode && <div className="border-t border-zinc-100 p-5 sm:p-6">
               {isMe ? (
                 <Button block className="sm:w-auto sm:min-w-[220px]" onClick={() => setConfirming('start')} disabled={gs.players.length === 0}>
                   {t(lang, 'startGame')}
@@ -1515,7 +1590,7 @@ const BetYouCantGame = () => {
                 <Notice>{t(lang, 'joinToStart')}</Notice>
               )}
               {apiError && <p className="mt-3 text-sm text-rose-600">{apiError}</p>}
-            </div>
+            </div>}
           </Card>
           {confirming === 'start' && isMe && (
             <ConfirmDialog
@@ -1586,7 +1661,10 @@ const BetYouCantGame = () => {
         Math.max(0, Math.ceil((gs.performEndsAt - serverNow()) / 1000))
       )
     : null;
+  // The TV isn't a player, so it reads like an onlooker's screen; the server
+  // already hides from it whatever the current player can't see.
   const iAmCurrent = myPlayerId === gs.currentPlayerIndex;
+  const songHiddenText = tvMode ? t(lang, 'songHiddenTV', currentPlayer.name) : undefined;
   // In a duel the opponent doesn't bet, and a bet on success is a bet on
   // the performer winning.
   const opponent = gs.duelOpponent != null ? gs.players[gs.duelOpponent] : null;
@@ -1682,10 +1760,10 @@ const BetYouCantGame = () => {
           : currentTask
             ? <div className="mb-6 space-y-3">
                 <TaskCard text={currentTask.text} meta={taskTimeText(currentTask)} />
-                <SongCard track={gs.track} lang={lang} />
+                <SongCard track={gs.track} lang={lang} hiddenText={songHiddenText} />
                 {opponent && <p className="text-sm text-zinc-500">{t(lang, 'duelBetHint')}</p>}
               </div>
-            : <div className="mb-6"><TaskCard muted text={t(lang, 'taskHiddenUntilBets')} /></div>}
+            : <div className="mb-6"><TaskCard muted text={t(lang, tvMode ? 'taskHiddenTV' : 'taskHiddenUntilBets')} /></div>}
 
         <div className="grid gap-6 lg:grid-cols-2">
           <div>
@@ -1730,7 +1808,7 @@ const BetYouCantGame = () => {
       <Panel eyebrow={typeLabel(currentTask.type)} title={t(lang, 'challengeRevealed')}>
         <div className="space-y-3">
           <TaskCard text={currentTask.text} meta={taskTimeText(currentTask)} />
-          <SongCard track={gs.track} lang={lang} />
+          <SongCard track={gs.track} lang={lang} hiddenText={songHiddenText} />
         </div>
         <div className="mt-6">
           <h3 className="mb-2 text-sm font-semibold">{t(lang, 'betsPlacedTitle')}</h3>
@@ -1757,30 +1835,33 @@ const BetYouCantGame = () => {
       >
         <div className="space-y-3">
           <TaskCard text={currentTask.text} />
-          <SongCard track={gs.track} lang={lang} />
+          <SongCard track={gs.track} lang={lang} hiddenText={songHiddenText} />
         </div>
 
         {isSong && !gs.showResults && (
           <div className="mt-4">
+            {gs.tvConnected && <Notice tone="accent" className="mb-3">{t(lang, 'songPlaysOnTV')}</Notice>}
             {iAmCurrent ? (
               !songVisibleToMe && (
                 <div className="flex flex-col gap-2 sm:flex-row">
-                  <Button variant="secondary" onClick={clipPlaying ? stopClip : playClip}>
-                    {clipPlaying ? t(lang, 'stopClip') : t(lang, 'playClip')}
-                  </Button>
+                  {!gs.tvConnected && (
+                    <Button variant="secondary" onClick={clipPlaying ? stopClip : playClip}>
+                      {clipPlaying ? t(lang, 'stopClip') : t(lang, 'playClip')}
+                    </Button>
+                  )}
                   <Button className="flex-1" onClick={revealSong}>{t(lang, 'showSong')}</Button>
                 </div>
               )
-            ) : (
+            ) : !gs.tvConnected && (
               <Notice tone="accent">{t(lang, 'songPlaysOn', currentPlayer.name)}</Notice>
             )}
-            {iAmCurrent && clipError && <p className="mt-2 text-sm text-rose-600">{t(lang, 'clipError')}</p>}
+            {iAmCurrent && !tvMode && clipError && <p className="mt-2 text-sm text-rose-600">{t(lang, 'clipError')}</p>}
           </div>
         )}
 
         {game && !gs.showResults && (
           <div className="mt-6">
-            {iAmCurrent ? (
+            {iAmCurrent && !tvMode ? (
               <>
                 {game === 'tenSeconds' && <TenSecondsGame key={gs.currentTaskIndex} lang={lang} onDone={recordResult} />}
                 {game === 'colors' && <ColorsGame key={gs.currentTaskIndex} lang={lang} onDone={recordResult} />}
@@ -1879,6 +1960,29 @@ const BetYouCantGame = () => {
           </div>
         )}
       </Panel>
+    );
+  }
+
+  if (tvMode) {
+    // Bigger on a big screen; the phase view is only a picture of the
+    // current player's screen, so nothing in it reacts to clicks.
+    const zoom = window.innerWidth >= 1600 ? 1.5 : window.innerWidth >= 1200 ? 1.25 : 1;
+    return shell(
+      <div className="mx-auto w-full max-w-7xl" style={{ zoom }}>
+        <TwoColumn
+          main={<>
+            {apiError && <Notice tone="danger">{apiError}</Notice>}
+            {clipError && (
+              <Button block onClick={playClip}>{t(lang, 'tvEnableSound')}</Button>
+            )}
+            <div className="pointer-events-none select-none" aria-hidden="true">{phaseView}</div>
+          </>}
+          side={<>
+            <Standings players={gs.players} currentId={gs.currentPlayerIndex} myId={null} lang={lang} />
+            {renderInviteCard()}
+          </>}
+        />
+      </div>
     );
   }
 
