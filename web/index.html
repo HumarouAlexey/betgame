@@ -30,6 +30,8 @@ const { useState, useEffect } = React;
 const MIN_BET = 5;
 const STARTING_MONEY = 100;
 const RESCUE_AMOUNT = 100;
+// Length of a Deezer preview, and so of a song challenge (songSeconds in deezer.go).
+const SONG_SECONDS = 30;
 
 // ---- i18n ----
 const STRINGS = {
@@ -51,7 +53,7 @@ const STRINGS = {
     loadingGame: 'Loading game…',
     howToPlayTitle: 'How to Play',
     howToPlay1: 'Roll dice and move around the board',
-    howToPlay2: 'Complete skill or mental challenges',
+    howToPlay2: 'Complete skill, mental and song challenges',
     howToPlay3: 'Bet on whether others will succeed',
     howToPlay4: 'Collect the most money to win!',
     lobbyIntro: 'Everyone opens this link or scans the QR code on their own phone and joins under their name.',
@@ -110,14 +112,25 @@ const STRINGS = {
     blindBetWarning: 'Other players will bet BEFORE seeing what the challenge is!',
     skillTaskBtn: 'Skill Task',
     mentalTaskBtn: 'Mental Task',
+    musicTaskBtn: 'Guess the Song',
     skillChallenge: 'Skill Challenge',
     mentalChallenge: 'Mental Challenge',
+    musicChallenge: 'Guess the Song',
+    musicTaskText: `Can the player name the artist or band before the ${SONG_SECONDS}-second clip ends? The song title isn't needed. One answer, no hints.`,
+    songHidden: "The song stays hidden from you until you've answered.",
+    songAnswer: 'Artist',
+    songPlaysOn: (name) => `The clip plays on ${name}'s phone.`,
+    playClip: 'Play clip',
+    stopClip: 'Stop clip',
+    showSong: "I've answered — show the song",
+    clipError: "Couldn't play the clip. Check that the server has internet access.",
     timeLimit: (t) => `Time limit: ${t} seconds`,
     noTimeLimit: 'No time limit — the tries decide',
     blindBettingTitle: 'Blind Betting!',
     hasChosen: 'has chosen a',
     skillChallengeLower: 'skill challenge',
     mentalChallengeLower: 'mental challenge',
+    musicChallengeLower: 'song challenge',
     blindBettingWarning: 'Place your bets WITHOUT knowing the task!',
     waitingOnBets: (count, needed) => `Waiting on bets: ${count}/${needed}`,
     youBet: (amount, outcome) => `You bet €${amount} on ${outcome} — waiting for the others.`,
@@ -166,7 +179,7 @@ const STRINGS = {
     loadingGame: 'Загрузка игры…',
     howToPlayTitle: 'Как играть',
     howToPlay1: 'Бросай кубик и двигайся по полю',
-    howToPlay2: 'Выполняй задания на ловкость или смекалку',
+    howToPlay2: 'Выполняй задания на ловкость, смекалку и угадывай песни',
     howToPlay3: 'Делай ставки на успех других игроков',
     howToPlay4: 'Собери больше всех денег и победи!',
     lobbyIntro: 'Каждый открывает эту ссылку или сканирует QR-код на своём телефоне и присоединяется под своим именем.',
@@ -225,14 +238,25 @@ const STRINGS = {
     blindBetWarning: 'Остальные игроки сделают ставки ДО того, как узнают задание!',
     skillTaskBtn: 'На ловкость',
     mentalTaskBtn: 'На смекалку',
+    musicTaskBtn: 'Угадай песню',
     skillChallenge: 'Испытание на ловкость',
     mentalChallenge: 'Испытание на смекалку',
+    musicChallenge: 'Угадай песню',
+    musicTaskText: `Сможет ли игрок назвать исполнителя или группу, пока не закончился ${SONG_SECONDS}-секундный отрывок? Название песни не нужно. Один ответ, без подсказок.`,
+    songHidden: 'Песня скрыта от тебя, пока ты не ответишь.',
+    songAnswer: 'Исполнитель',
+    songPlaysOn: (name) => `Отрывок играет на телефоне игрока ${name}.`,
+    playClip: 'Включить отрывок',
+    stopClip: 'Остановить отрывок',
+    showSong: 'Я ответил — показать песню',
+    clipError: 'Не удалось включить отрывок. Проверьте, что у сервера есть интернет.',
     timeLimit: (t) => `Лимит времени: ${t} секунд`,
     noTimeLimit: 'Без ограничения по времени — решают попытки',
     blindBettingTitle: 'Слепые ставки!',
     hasChosen: 'выбрал',
     skillChallengeLower: 'испытание на ловкость',
     mentalChallengeLower: 'испытание на смекалку',
+    musicChallengeLower: 'испытание «угадай песню»',
     blindBettingWarning: 'Сделайте ставки, НЕ зная задания!',
     waitingOnBets: (count, needed) => `Ожидаем ставки: ${count}/${needed}`,
     youBet: (amount, outcome) => `Вы поставили €${amount} на ${outcome} — ждём остальных.`,
@@ -453,6 +477,23 @@ const TaskCard = ({ text, meta, muted }) => (
     {meta && <p className="mt-3 text-sm text-zinc-500">{meta}</p>}
   </div>
 );
+
+// The song in a song challenge. The performer's copy has no title until
+// they've answered, so they see a placeholder instead.
+const SongCard = ({ track, lang }) => {
+  if (!track) return null;
+  if (!track.title) return <TaskCard muted text={t(lang, 'songHidden')} />;
+  return (
+    <div className="flex items-center gap-4 rounded-xl border border-zinc-200 bg-white p-4">
+      {track.cover && <img src={track.cover} alt="" width={64} height={64} className="h-16 w-16 shrink-0 rounded-lg object-cover" />}
+      <div className="min-w-0">
+        <Eyebrow>{t(lang, 'songAnswer')}</Eyebrow>
+        <p className="mt-1 truncate text-lg font-semibold">{track.artist}</p>
+        <p className="truncate text-sm text-zinc-500">{track.title}</p>
+      </div>
+    </div>
+  );
+};
 
 const LanguageSwitcher = ({ lang, setLang }) => (
   <div className="flex rounded-lg border border-zinc-200 bg-zinc-50 p-0.5 text-xs font-semibold">
@@ -1097,14 +1138,50 @@ const BetYouCantGame = () => {
   const revealBlindTask = () => post('/reveal');
 
   const currentTaskObject = (state) => {
+    if (state && state.currentTaskType === 'music') {
+      return { text: t(lang, 'musicTaskText'), time: SONG_SECONDS, type: 'music' };
+    }
     if (!state || !state.currentTaskType || state.currentTaskIndex == null) return null;
     const list = state.currentTaskType === 'skill' ? skillTasks : mentalTasks;
     const entry = list[state.currentTaskIndex];
     return { ...entry, text: entry[lang], type: state.currentTaskType };
   };
 
+  // The clip plays only on the performer's phone. It starts straight from
+  // the button press, since phones only allow sound after a tap.
+  const clipRef = React.useRef(null);
+  const [clipPlaying, setClipPlaying] = useState(false);
+  const [clipError, setClipError] = useState(false);
+  const stopClip = () => {
+    if (clipRef.current) {
+      clipRef.current.pause();
+      clipRef.current = null;
+    }
+    setClipPlaying(false);
+  };
+  const playClip = () => {
+    stopClip();
+    setClipError(false);
+    const audio = new Audio(`${apiBase()}/${gameId}/songPreview?t=${Date.now()}`);
+    audio.onended = () => setClipPlaying(false);
+    audio.onerror = () => { setClipPlaying(false); setClipError(true); };
+    clipRef.current = audio;
+    setClipPlaying(true);
+    audio.play().catch(() => { setClipPlaying(false); setClipError(true); });
+  };
+  const songVisibleToMe = !!(gs && gs.track && gs.track.title);
+  // Stop as soon as the challenge is over or the performer sees the answer.
+  useEffect(() => {
+    if (!gs || gs.phase !== 'performing' || songVisibleToMe) stopClip();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gs && gs.phase, songVisibleToMe]);
+  useEffect(() => stopClip, []);
+
+  const revealSong = () => { stopClip(); return post('/revealSong'); };
+
   const startChallenge = () => {
     const task = currentTaskObject(gs);
+    if (task && task.type === 'music') playClip();
     if (task && !task.time) return post('/startChallenge', { noTimeLimit: true });
     return post('/startChallenge', { taskTimeSeconds: (task && task.time) || 30 });
   };
@@ -1343,7 +1420,7 @@ const BetYouCantGame = () => {
   const betsNeeded = gs.players.length - 1;
   const myBet = myPlayerId !== null ? (gs.bets || {})[myPlayerId] : undefined;
   const waitingContinue = !iAmCurrent && <Hint>{t(lang, 'waitingContinue', currentPlayer.name)}</Hint>;
-  const typeLabel = (type) => (type === 'skill' ? t(lang, 'skillChallenge') : t(lang, 'mentalChallenge'));
+  const typeLabel = (type) => t(lang, `${type}Challenge`);
 
   let phaseView = null;
 
@@ -1373,8 +1450,8 @@ const BetYouCantGame = () => {
         title={iAmCurrent ? t(lang, 'chooseChallengeType') : t(lang, 'chooseChallengeTypeOther', currentPlayer.name)}
       >
         <Notice tone="warning" className="mb-6">{t(lang, 'blindBetWarning')}</Notice>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {[['skill', 'skillTaskBtn'], ['mental', 'mentalTaskBtn']].map(([type, key]) => (
+        <div className={cx('grid gap-3', gs.musicAvailable ? 'sm:grid-cols-3' : 'sm:grid-cols-2')}>
+          {[['skill', 'skillTaskBtn'], ['mental', 'mentalTaskBtn'], ...(gs.musicAvailable ? [['music', 'musicTaskBtn']] : [])].map(([type, key]) => (
             <button
               key={type}
               type="button"
@@ -1395,13 +1472,16 @@ const BetYouCantGame = () => {
       <Panel
         eyebrow={isBlind ? t(lang, 'blindBettingTitle') : typeLabel(gs.currentTaskType)}
         title={isBlind
-          ? `${currentPlayer.name} ${t(lang, 'hasChosen')} ${gs.blindBetTaskType === 'skill' ? t(lang, 'skillChallengeLower') : t(lang, 'mentalChallengeLower')}`
+          ? `${currentPlayer.name} ${t(lang, 'hasChosen')} ${t(lang, `${gs.blindBetTaskType}ChallengeLower`)}`
           : null}
       >
         {isBlind
           ? <Notice tone="warning" className="mb-6">{t(lang, 'blindBettingWarning')}</Notice>
           : currentTask
-            ? <div className="mb-6"><TaskCard text={currentTask.text} meta={taskTimeText(currentTask)} /></div>
+            ? <div className="mb-6 space-y-3">
+                <TaskCard text={currentTask.text} meta={taskTimeText(currentTask)} />
+                <SongCard track={gs.track} lang={lang} />
+              </div>
             : <div className="mb-6"><TaskCard muted text={t(lang, 'taskHiddenUntilBets')} /></div>}
 
         <div className="grid gap-6 lg:grid-cols-2">
@@ -1436,7 +1516,10 @@ const BetYouCantGame = () => {
   } else if (gs.phase === 'revealBlindTask' && currentTask) {
     phaseView = (
       <Panel eyebrow={typeLabel(currentTask.type)} title={t(lang, 'challengeRevealed')}>
-        <TaskCard text={currentTask.text} meta={taskTimeText(currentTask)} />
+        <div className="space-y-3">
+          <TaskCard text={currentTask.text} meta={taskTimeText(currentTask)} />
+          <SongCard track={gs.track} lang={lang} />
+        </div>
         <div className="mt-6">
           <h3 className="mb-2 text-sm font-semibold">{t(lang, 'betsPlacedTitle')}</h3>
           <BetStatusList players={otherPlayers} placedBy={betPlacedBy} pendingLabel="—" lang={lang} />
@@ -1451,12 +1534,34 @@ const BetYouCantGame = () => {
   } else if (gs.phase === 'performing' && currentTask) {
     const total = currentTask.time || 0;
     const progress = total && challengeTimeLeft !== null ? Math.min(100, (challengeTimeLeft / total) * 100) : 0;
+    const isSong = currentTask.type === 'music';
     phaseView = (
       <Panel
         eyebrow={typeLabel(currentTask.type)}
         title={iAmCurrent ? t(lang, 'youPerforming') : t(lang, 'otherPerforming', currentPlayer.name)}
       >
-        <TaskCard text={currentTask.text} />
+        <div className="space-y-3">
+          <TaskCard text={currentTask.text} />
+          <SongCard track={gs.track} lang={lang} />
+        </div>
+
+        {isSong && !gs.showResults && (
+          <div className="mt-4">
+            {iAmCurrent ? (
+              !songVisibleToMe && (
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Button variant="secondary" onClick={clipPlaying ? stopClip : playClip}>
+                    {clipPlaying ? t(lang, 'stopClip') : t(lang, 'playClip')}
+                  </Button>
+                  <Button className="flex-1" onClick={revealSong}>{t(lang, 'showSong')}</Button>
+                </div>
+              )
+            ) : (
+              <Notice tone="accent">{t(lang, 'songPlaysOn', currentPlayer.name)}</Notice>
+            )}
+            {iAmCurrent && clipError && <p className="mt-2 text-sm text-rose-600">{t(lang, 'clipError')}</p>}
+          </div>
+        )}
 
         {!gs.showResults && (
           <div className="mt-6">
@@ -1475,7 +1580,8 @@ const BetYouCantGame = () => {
           </div>
         )}
 
-        {!gs.showResults && (
+        {/* The performer judges a song only once they can see what it was. */}
+        {!gs.showResults && !(iAmCurrent && isSong && !songVisibleToMe) && (
           <div className="mt-6 border-t border-zinc-100 pt-6">
             {iAmCurrent ? (
               <>

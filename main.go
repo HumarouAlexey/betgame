@@ -68,9 +68,17 @@ type GameState struct {
 	UsedSkillTasks  []int  `json:"usedSkillTasks"`
 	UsedMentalTasks []int  `json:"usedMentalTasks"`
 	PerformEndsAt   *int64 `json:"performEndsAt"`
-	BetsCount       int    `json:"betsCount"`
-	BetPlacedBy     []int  `json:"betPlacedBy"`
-	You             *int   `json:"you"`
+	// Track is the song in a song challenge. The performer gets an empty
+	// one until they've answered (see sanitizeState).
+	Track *Track `json:"track"`
+	// SongRevealed is set when the performer asks to see the song early.
+	SongRevealed bool `json:"songRevealed"`
+	// MusicAvailable says whether song challenges can be dealt right now
+	// (the server needs to reach Deezer).
+	MusicAvailable bool  `json:"musicAvailable"`
+	BetsCount      int   `json:"betsCount"`
+	BetPlacedBy    []int `json:"betPlacedBy"`
+	You            *int  `json:"you"`
 	// ServerNow is the server's clock at the moment of the response, so
 	// clients can run countdowns against server time rather than their own
 	// (possibly skewed) clocks.
@@ -89,18 +97,30 @@ type Game struct {
 	// shuffled bag (see drawTaskType); lastType is the one dealt most recently.
 	typeBag  []string
 	lastType string
+	// usedTracks holds the Deezer ids of the songs already played.
+	usedTracks map[int64]bool
 }
 
 // taskTypeBag is one round of challenge types. Dealing from a shuffled bag
-// instead of rolling for each turn keeps the three types evenly mixed: no
+// instead of rolling for each turn keeps the four types evenly mixed: no
 // type comes up more than twice in a row, and a blind bet is never more
-// than eight challenges away.
-var taskTypeBag = []string{"skill", "skill", "mental", "mental", "blind", "blind"}
+// than twelve challenges away.
+var taskTypeBag = []string{"skill", "skill", "mental", "mental", "music", "music", "blind", "blind"}
 
 // drawTaskType deals the next challenge type, refilling and reshuffling the
 // bag when it runs out. A fresh bag never opens with the type the previous
-// one ended on, so a streak can't straddle two bags.
-func (g *Game) drawTaskType() string {
+// one ended on, so a streak can't straddle two bags. Song challenges are
+// skipped while the server can't reach Deezer.
+func (g *Game) drawTaskType(musicOK bool) string {
+	for {
+		t := g.drawFromBag()
+		if t != "music" || musicOK {
+			return t
+		}
+	}
+}
+
+func (g *Game) drawFromBag() string {
 	if len(g.typeBag) == 0 {
 		bag := append([]string(nil), taskTypeBag...)
 		mrand.Shuffle(len(bag), func(i, j int) { bag[i], bag[j] = bag[j], bag[i] })
@@ -203,6 +223,14 @@ func sanitizeState(state GameState, viewerID *int) GameState {
 	out.BetPlacedBy = placedBy
 	out.You = viewerID
 	out.ServerNow = nowMs()
+	out.MusicAvailable = musicAvailable()
+
+	// The performer can't see which song it is until they've answered:
+	// they ask to see it, the clip runs out, or the results are in.
+	if state.Track != nil && viewerID != nil && *viewerID == state.CurrentPlayerIdx &&
+		!state.ShowResults && !state.SongRevealed && (state.PerformEndsAt == nil || out.ServerNow < *state.PerformEndsAt) {
+		out.Track = &Track{}
+	}
 
 	// A mental task is a puzzle the current player could start solving the
 	// moment they read it, so they only get to see it once everyone else
@@ -292,6 +320,8 @@ var errMessages = map[string]errMsg{
 	"adminDisabled":      {"removing players is turned off on this server", "удаление игроков отключено на этом сервере"},
 	"wrongPassword":      {"wrong password", "неверный пароль"},
 	"playerChanged":      {"the player list has changed, try again", "список игроков изменился, попробуйте ещё раз"},
+	"musicUnavailable":   {"song challenges need the server to reach Deezer", "для заданий с песнями серверу нужен доступ к Deezer"},
+	"noSong":             {"there is no song in play", "сейчас песня не играет"},
 }
 
 // writeErrKey writes an error message in the language requested via ?lang=ru
@@ -479,7 +509,7 @@ func handleRoll(w http.ResponseWriter, r *http.Request, id string) {
 	// The roll moves the player (and pays out for passing START); which
 	// kind of challenge they get comes from the shuffled bag, not the square.
 	g.state.DiceValue = &roll
-	switch t := g.drawTaskType(); t {
+	switch t := g.drawTaskType(musicAvailable()); t {
 	case "skill":
 		idx, used := pickUnused(skillTaskCount, g.state.UsedSkillTasks)
 		g.state.UsedSkillTasks = used
@@ -491,6 +521,10 @@ func handleRoll(w http.ResponseWriter, r *http.Request, id string) {
 		g.state.UsedMentalTasks = used
 		g.state.CurrentTaskType = &t
 		g.state.CurrentTaskIndex = &idx
+		g.state.Phase = "betting"
+	case "music":
+		g.state.CurrentTaskType = &t
+		g.state.Track = g.pickTrack()
 		g.state.Phase = "betting"
 	default:
 		g.state.Phase = "blindBet"
@@ -511,8 +545,12 @@ func handleBlindType(w http.ResponseWriter, r *http.Request, id string) {
 	}
 	var req blindTypeReq
 	json.NewDecoder(r.Body).Decode(&req)
-	if req.Type != "skill" && req.Type != "mental" {
+	if req.Type != "skill" && req.Type != "mental" && req.Type != "music" {
 		writeErrKey(w, r, 400, "invalidType")
+		return
+	}
+	if req.Type == "music" && !musicAvailable() {
+		writeErrKey(w, r, 503, "musicUnavailable")
 		return
 	}
 	g.mu.Lock()
@@ -542,14 +580,18 @@ func handleReveal(w http.ResponseWriter, r *http.Request, id string) {
 		return
 	}
 	var idx int
-	if *g.state.BlindBetTaskType == "skill" {
-		idx, g.state.UsedSkillTasks = pickUnused(skillTaskCount, g.state.UsedSkillTasks)
-	} else {
-		idx, g.state.UsedMentalTasks = pickUnused(mentalTaskCount, g.state.UsedMentalTasks)
-	}
 	t := *g.state.BlindBetTaskType
+	switch t {
+	case "skill":
+		idx, g.state.UsedSkillTasks = pickUnused(skillTaskCount, g.state.UsedSkillTasks)
+		g.state.CurrentTaskIndex = &idx
+	case "mental":
+		idx, g.state.UsedMentalTasks = pickUnused(mentalTaskCount, g.state.UsedMentalTasks)
+		g.state.CurrentTaskIndex = &idx
+	case "music":
+		g.state.Track = g.pickTrack()
+	}
 	g.state.CurrentTaskType = &t
-	g.state.CurrentTaskIndex = &idx
 	g.state.Phase = "revealBlindTask"
 	respondState(w, r, g)
 }
@@ -576,6 +618,10 @@ func handleStartChallenge(w http.ResponseWriter, r *http.Request, id string) {
 	defer g.mu.Unlock()
 	if !requireCurrentPlayer(w, r, g) {
 		return
+	}
+	// A song challenge lasts exactly as long as the clip.
+	if g.state.Track != nil {
+		req.NoTimeLimit, req.TaskTimeSeconds = false, songSeconds
 	}
 	if req.NoTimeLimit {
 		g.state.PerformEndsAt = nil
@@ -710,6 +756,8 @@ func (g *Game) startTurn(idx int) {
 	g.state.Phase = "playing"
 	g.state.BlindBetTaskType = nil
 	g.state.PerformEndsAt = nil
+	g.state.Track = nil
+	g.state.SongRevealed = false
 }
 
 // removePlayer takes player k out of the game. Players are addressed by
@@ -875,6 +923,10 @@ func apiHandler(w http.ResponseWriter, r *http.Request) {
 		handleAdminCheck(w, r, id)
 	case action == "kick" && r.Method == http.MethodPost:
 		handleKick(w, r, id)
+	case action == "songPreview" && r.Method == http.MethodGet:
+		handleSongPreview(w, r, id)
+	case action == "revealSong" && r.Method == http.MethodPost:
+		handleRevealSong(w, r, id)
 	default:
 		writeErrKey(w, r, 404, "unknownRoute")
 	}
@@ -908,6 +960,8 @@ func main() {
 	if err != nil {
 		log.Fatal("не найдены встроенные файлы web/: ", err)
 	}
+
+	go keepTracksFresh()
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/games", func(w http.ResponseWriter, r *http.Request) {

@@ -44,6 +44,23 @@ loses their seat and money and can rejoin with the link as a new player;
 if it was their turn, the turn passes on. The password is kept only in
 that browser tab's memory, so a reload asks for it again.
 
+## Song challenges
+
+In a song challenge a 30-second clip plays on the performer's phone, and
+they have to name the artist or band before it ends (the song title isn't
+needed). Everyone else sees the answer while betting; the performer sees
+it once they tap "I've answered", the clip runs out, or the results are in.
+
+Clips are Deezer's free 30-second previews (no account or API key). The
+server picks songs from Deezer's chart; to use your own list instead, make
+a public Deezer playlist and start the server with its id (the number in
+the playlist's link):
+
+    BETGAME_DEEZER_PLAYLIST=1234567890 ./betgame
+
+The server needs internet access for this. Without it the game works as
+before and simply deals no song challenges.
+
 ## Playing over the internet instead of local WiFi
 
 If players aren't on the same network, deploy the same binary to any small
@@ -70,9 +87,9 @@ address instead. The code doesn't change — only where you run the binary.
 - Mental tasks stay hidden from the player performing them until every
   other player has bet, so they can't get a head start on the puzzle.
 - The dice only move players (and pay €50 for passing START). The kind of
-  challenge — skill, mental or blind bet — is dealt from a shuffled bag of
-  six (two of each), so no kind comes up more than twice in a row and a
-  blind bet is never more than eight challenges away.
+  challenge — skill, mental, song or blind bet — is dealt from a shuffled
+  bag of eight (two of each), so no kind comes up more than twice in a row
+  and a blind bet is never more than twelve challenges away.
 - A player who ends a challenge with €10 or less (in practice €5–10, since
   a lost bet can't take anyone lower) is topped up with €100 by the bank,
   with a message on the results screen.
